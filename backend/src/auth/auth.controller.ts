@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
@@ -39,6 +40,7 @@ import { AuthCookies } from './auth-cookies.js';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
 import {
+  ChangePasswordDto,
   LoginDto,
   LoginResponseDto,
   MessageResponseDto,
@@ -109,6 +111,7 @@ export class AuthController {
     return {
       user: toPublicUser(user),
       mustChangePassword: user.mustChangePassword,
+      returnTo: dto.returnTo ?? null,
     };
   }
 
@@ -144,6 +147,7 @@ export class AuthController {
       return {
         user: toPublicUser(user),
         mustChangePassword: user.mustChangePassword,
+        returnTo: null,
       };
     } catch (e) {
       this.cookies.clear(res);
@@ -170,6 +174,33 @@ export class AuthController {
     );
     this.cookies.clear(res);
     return { message: 'Logged out' };
+  }
+
+  @Patch('change-password')
+  @AllowPendingPasswordChange()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Change own password (ACC-08)',
+    description:
+      'Requires the current password. The new password must follow the ACC-01 rules and differ from the current one. Also clears a forced password change (ACC-07a, ACC-13). Other sessions of this account are logged out; this one stays logged in.',
+  })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description:
+      'VALIDATION_FAILED, INVALID_CURRENT_PASSWORD or PASSWORD_UNCHANGED',
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'AUTH_REQUIRED or SESSION_EXPIRED',
+  })
+  async changePassword(
+    @CurrentUser() current: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<UserResponseDto> {
+    return toPublicUser(
+      await this.auth.changePassword(current.id, current.sessionId, dto),
+    );
   }
 
   @Get('me')
