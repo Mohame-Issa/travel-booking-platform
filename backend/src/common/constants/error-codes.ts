@@ -1,0 +1,35 @@
+/**
+ * Machine-readable error codes returned in the `code` field of every error
+ * response. Add new codes here (UPPER_SNAKE_CASE) instead of inventing them
+ * inline, so the frontend has one list to rely on.
+ */
+export const ErrorCode = {
+  // Generic (used automatically by the global exception filter)
+  BAD_REQUEST: 'BAD_REQUEST',
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  INVALID_ID: 'INVALID_ID',
+  UNAUTHORIZED: 'UNAUTHORIZED',
+  FORBIDDEN: 'FORBIDDEN',
+  NOT_FOUND: 'NOT_FOUND',
+  CONFLICT: 'CONFLICT',
+  DUPLICATE_KEY: 'DUPLICATE_KEY',
+  NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+
+  // Authentication and sessions (ACC-04, ACC-05, ACC-06, ACC-19)
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  SESSION_EXPIRED: 'SESSION_EXPIRED',
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  ACCOUNT_LOCKED: 'ACCOUNT_LOCKED',
+  ACCOUNT_SUSPENDED: 'ACCOUNT_SUSPENDED',
+  ACCOUNT_DEACTIVATED: 'ACCOUNT_DEACTIVATED',
+  PASSWORD_CHANGE_REQUIRED: 'PASSWORD_CHANGE_REQUIRED',
+  EMAIL_ALREADY_REGISTERED: 'EMAIL_ALREADY_REGISTERED',
+
+  // Authorization
+  INSUFFICIENT_ROLE: 'INSUFFICIENT_ROLE',
+  NOT_RESOURCE_OWNER: 'NOT_RESOURCE_OWNER',
+  NOT_ASSIGNED_PROVIDER: 'NOT_ASSIGNED_PROVIDER',
+} as const;
+
+export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
