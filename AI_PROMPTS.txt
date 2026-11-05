@@ -31,3 +31,31 @@ accounts were deleted afterwards) and with unit tests for the guards. I
 reviewed the code and wrote AI_RULES.md with it so teammates follow the same
 folders, naming, errors and guard usage.
 ================================================
+
+================================================
+Date: 2026-11-05
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: ACC-07a, ACC-08, ACC-09, ACC-10, ACC-11, ACC-12
+
+Prompt:
+Build my remaining endpoints on feature/ACC-07a-account-management:
+POST /api/admin/users/:id/reset-password (ACC-07a), PATCH
+/api/auth/change-password (ACC-08), GET and PATCH /api/users/me (ACC-11,
+ACC-09), DELETE /api/users/me (ACC-12), and cover ACC-10 following the exact
+Excel rules. Use the upcoming-Confirmed-booking checks and the audit service
+through common/interfaces (placeholders until teammates merge).
+
+How the output was used:
+Claude Code generated the AccountsModule (profile, deactivation, admin reset)
+and the change-password endpoint. Decisions taken with it: deactivation is for
+registered users only, needs the password as confirmation and is blocked
+(409) by either the flight or the hotel upcoming-booking check; admin reset
+cannot target admins, clears the lockout, signs the account out everywhere,
+forces a new password and is written to the audit log; changing a password
+signs out all other sessions; preferred currency is limited to the currencies
+in Countries.csv (a unit test keeps them in sync); for ACC-10 the backend
+returns 401 AUTH_REQUIRED and login accepts and echoes a safe relative
+returnTo path. Verified with unit tests and real requests on the shared
+database (test accounts deleted afterwards). I reviewed the code.
+================================================

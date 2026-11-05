@@ -9,6 +9,7 @@ import { RolesGuard } from './common/guards/roles.guard.js';
 import { PlaceholderIntegrationsModule } from './common/placeholders/placeholder-integrations.module.js';
 import { validateEnv } from './config/env.validation.js';
 import { HealthController } from './health/health.controller.js';
+import { AccountsModule } from './users/accounts.module.js';
 import { UsersModule } from './users/users.module.js';
 
 @Module({
@@ -35,6 +36,7 @@ import { UsersModule } from './users/users.module.js';
 
     UsersModule,
     AuthModule,
+    AccountsModule,
     // Feature modules are added below this line, one per teammate PR.
   ],
   controllers: [HealthController],

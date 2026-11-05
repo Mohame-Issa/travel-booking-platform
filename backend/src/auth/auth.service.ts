@@ -13,7 +13,11 @@ import {
   LOCKOUT_DURATION_MS,
   MAX_FAILED_LOGIN_ATTEMPTS,
 } from './auth.constants.js';
-import type { LoginDto, RegisterDto } from './dto/auth.dto.js';
+import type {
+  ChangePasswordDto,
+  LoginDto,
+  RegisterDto,
+} from './dto/auth.dto.js';
 import { SessionMeta, SessionsService } from './sessions.service.js';
 
 export interface AccessTokenPayload {
@@ -217,6 +221,58 @@ export class AuthService {
       }
     }
     if (sessionId) await this.sessions.revoke(sessionId);
+  }
+
+  /**
+   * ACC-08 (and the forced change after ACC-07a / ACC-13).
+   * Keeps the current session and logs the account out everywhere else.
+   */
+  async changePassword(
+    userId: string,
+    currentSessionId: string,
+    dto: ChangePasswordDto,
+  ): Promise<UserDocument> {
+    const user = await this.userModel
+      .findById(userId)
+      .select('+passwordHash')
+      .exec();
+    if (!user) throw invalidCredentials();
+
+    if (!(await this.verifyPassword(dto.currentPassword, user.passwordHash))) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.INVALID_CURRENT_PASSWORD,
+        'Current password is incorrect',
+        [
+          {
+            field: 'currentPassword',
+            messages: ['Current password is incorrect'],
+          },
+        ],
+      );
+    }
+    if (await this.verifyPassword(dto.newPassword, user.passwordHash)) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.PASSWORD_UNCHANGED,
+        'The new password must be different from the current one',
+        [
+          {
+            field: 'newPassword',
+            messages: [
+              'The new password must be different from the current one',
+            ],
+          },
+        ],
+      );
+    }
+
+    user.passwordHash = await this.hashPassword(dto.newPassword);
+    user.mustChangePassword = false;
+    user.passwordChangedAt = new Date();
+    await user.save();
+    await this.sessions.revokeAllForUser(userId, currentSessionId);
+    return user;
   }
 
   verifyAccessToken(token: string): Promise<AccessTokenPayload> {
