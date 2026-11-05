@@ -1,1 +1,33 @@
 AI Prompt Log
+
+================================================
+Date: 2026-11-05
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: ACC-01, ACC-04, ACC-05, ACC-06, ACC-11, ACC-19, GEN-02, GEN-05, GEN-13
+
+Prompt:
+I'm Mohamed Amr, team leader. Read Project_Description.pdf, the Mandatory sheet
+of the requirements Excel and my section of Milestone_1_Work_Split.pdf. Build
+my foundation PR on feature/ACC-01-foundation: NestJS setup with the MongoDB
+Atlas connection (MONGODB_URI) and Swagger UI; shared validation, consistent
+error format and pagination (page size 10); User and Moderator Assignment
+schemas; sessions using httpOnly, Secure, SameSite cookies; role and ownership
+guards and a guard limiting moderators to their assigned provider; register,
+login, logout and GET /api/auth/me; a shared AI rules file and README setup
+section; and common/interfaces with signatures for confirm booking, release
+inventory, create refund, upcoming-Confirmed-booking check, audit and
+notification services, with clearly marked temporary placeholders. Never open
+backend/.env, never wipe shared collections, delete only test data you created.
+
+How the output was used:
+Claude Code generated the NestJS 12 backend skeleton and the common/, auth/
+and users/ modules. Design choices made with it: a 15-minute JWT access token
+plus a rotating refresh token whose hash is stored in a "sessions" collection
+with a 30-minute sliding idle timeout (ACC-06, ACC-19); an atomic failed-login
+counter for the 5-attempt / 15-minute lockout (ACC-05); bcrypt hashing
+(GEN-13). It was tested with real requests against the shared database (test
+accounts were deleted afterwards) and with unit tests for the guards. I
+reviewed the code and wrote AI_RULES.md with it so teammates follow the same
+folders, naming, errors and guard usage.
+================================================
