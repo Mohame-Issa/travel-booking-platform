@@ -13,6 +13,10 @@ import { PaymentsModule } from './payments/payments.module.js';
 import { RefundsModule } from './refunds/refunds.module.js';
 import { AccountsModule } from './users/accounts.module.js';
 import { UsersModule } from './users/users.module.js';
+import { AirlinesModule } from './airlines/airlines.module.js';
+import { AirportsModule } from './airports/airports.module.js';
+import { FlightsModule } from './flights/flights.module.js';
+import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
 
 @Module({
   imports: [
@@ -42,6 +46,10 @@ import { UsersModule } from './users/users.module.js';
     // Feature modules are added below this line, one per teammate PR.
     PaymentsModule,
     RefundsModule,
+    AirlinesModule,
+    AirportsModule,
+    FlightsModule,
+    HotelsCatalogueModule,
   ],
   controllers: [HealthController],
   providers: [
