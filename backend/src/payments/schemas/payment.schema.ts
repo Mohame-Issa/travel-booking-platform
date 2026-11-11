@@ -72,6 +72,13 @@ export class Payment {
   @Prop({ type: Date, default: null })
   succeededAt: Date | null;
 
+  /**
+   * When we asked the booking module to release the held seats/rooms after
+   * the hold expired. null = not released yet, so the expiry job retries.
+   */
+  @Prop({ type: Date, default: null })
+  releasedAt: Date | null;
+
   createdAt: Date;
   updatedAt: Date;
 }

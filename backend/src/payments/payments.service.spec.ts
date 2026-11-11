@@ -153,3 +153,75 @@ describe('PaymentsService.createPayment (PAY-01)', () => {
     );
   });
 });
+
+describe('PaymentsService.retryPayment (PAY-01)', () => {
+  function retrySetup(
+    status: PaymentStatus,
+    intentStatus = 'requires_payment_method',
+  ) {
+    const { service, stripe, model, policies } = setup();
+    const doc = {
+      _id: 'pay_1',
+      id: 'pay_1',
+      bookingType: 'flight',
+      bookingId: { toString: () => BOOKING },
+      status,
+      amountMinor: 25050,
+      currency: 'USD',
+      stripePaymentIntentId: 'pi_123',
+      holdExpiresAt: HOLD,
+      succeededAt: null,
+      createdAt: new Date(),
+    };
+    Object.assign(model, {
+      findById: vi.fn().mockReturnValue({ exec: () => Promise.resolve(doc) }),
+      updateOne: vi.fn().mockReturnValue({ exec: () => Promise.resolve({}) }),
+    });
+    stripe.paymentIntents.retrieve.mockResolvedValue({
+      id: 'pi_123',
+      status: intentStatus,
+      client_secret: 'pi_123_secret_x',
+    });
+    return { service, stripe, model, policies };
+  }
+
+  it('reuses the same PaymentIntent and moves failed -> pending', async () => {
+    const { service, stripe, model } = retrySetup(PaymentStatus.FAILED);
+    const res = await service.retryPayment(OWNER, 'pay_1');
+    expect(stripe.paymentIntents.create).not.toHaveBeenCalled();
+    expect(
+      (model as unknown as { updateOne: ReturnType<typeof vi.fn> }).updateOne
+        .mock.calls[0][1],
+    ).toEqual({
+      status: PaymentStatus.PENDING,
+    });
+    expect(res.status).toBe(PaymentStatus.PENDING);
+    expect(res.clientSecret).toBe('pi_123_secret_x');
+  });
+
+  it('checks the booking is still payable (hold not expired)', async () => {
+    const { service, policies } = retrySetup(PaymentStatus.FAILED);
+    policies.assertPayable.mockImplementation(() => {
+      throw { code: ErrorCode.HOLD_EXPIRED };
+    });
+    expect(await codeOf(service.retryPayment(OWNER, 'pay_1'))).toBe(
+      ErrorCode.HOLD_EXPIRED,
+    );
+  });
+
+  it('409 for a succeeded or cancelled payment', async () => {
+    for (const status of [PaymentStatus.SUCCEEDED, PaymentStatus.CANCELLED]) {
+      const { service } = retrySetup(status);
+      expect(await codeOf(service.retryPayment(OWNER, 'pay_1'))).toBe(
+        ErrorCode.PAYMENT_NOT_RETRYABLE,
+      );
+    }
+  });
+
+  it('409 when Stripe says the intent can no longer take a card', async () => {
+    const { service } = retrySetup(PaymentStatus.FAILED, 'canceled');
+    expect(await codeOf(service.retryPayment(OWNER, 'pay_1'))).toBe(
+      ErrorCode.PAYMENT_NOT_RETRYABLE,
+    );
+  });
+});

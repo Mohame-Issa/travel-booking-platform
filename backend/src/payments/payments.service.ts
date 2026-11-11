@@ -15,6 +15,13 @@ import { Payment, type PaymentDocument } from './schemas/payment.schema.js';
 /** Mongo duplicate-key error code. */
 const DUPLICATE_KEY = 11000;
 
+/** Stripe PaymentIntent states in which the card can be submitted again. */
+const RETRYABLE_INTENT_STATES = new Set<string>([
+  'requires_payment_method',
+  'requires_confirmation',
+  'requires_action',
+]);
+
 /**
  * PAY-01: pay a Pending Payment booking with Stripe (test mode).
  * This service only CREATES the PaymentIntent. The booking is confirmed
@@ -96,6 +103,69 @@ export class PaymentsService {
       }
       throw err;
     }
+  }
+
+  /**
+   * POST /api/payments/:id/retry (ownership is checked by @CheckOwnership).
+   * PAY-01: after a failure the user may retry until the hold expires.
+   * There is no attempt limit in the requirements, so none is enforced.
+   *
+   * We reuse the SAME PaymentIntent: after a decline Stripe puts it back to
+   * "requires_payment_method", so the frontend confirms it again with another
+   * card. One PaymentIntent per booking = no risk of charging twice.
+   */
+  async retryPayment(
+    userId: string,
+    paymentId: string,
+  ): Promise<PaymentResponseDto> {
+    const stripe = this.stripe();
+    const payment = await this.paymentModel.findById(paymentId).exec();
+    if (!payment) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        ErrorCode.NOT_FOUND,
+        'Payment not found',
+      );
+    }
+    if (
+      payment.status !== PaymentStatus.FAILED &&
+      payment.status !== PaymentStatus.PENDING
+    ) {
+      throw new ApiException(
+        HttpStatus.CONFLICT,
+        ErrorCode.PAYMENT_NOT_RETRYABLE,
+        `A ${payment.status} payment cannot be retried`,
+      );
+    }
+
+    // The booking must still be Pending Payment and inside its hold.
+    const booking = await this.policies.getOwnedBooking(
+      userId,
+      payment.bookingType,
+      payment.bookingId.toString(),
+    );
+    this.policies.assertPayable(booking);
+
+    const intent = await this.callStripe(() =>
+      stripe.paymentIntents.retrieve(payment.stripePaymentIntentId),
+    );
+    if (!RETRYABLE_INTENT_STATES.has(intent.status)) {
+      throw new ApiException(
+        HttpStatus.CONFLICT,
+        ErrorCode.PAYMENT_NOT_RETRYABLE,
+        `The payment is ${intent.status} at Stripe and cannot be retried`,
+      );
+    }
+
+    // failed -> pending (only if it is still failed: atomic).
+    await this.paymentModel
+      .updateOne(
+        { _id: payment._id, status: PaymentStatus.FAILED },
+        { status: PaymentStatus.PENDING },
+      )
+      .exec();
+    payment.status = PaymentStatus.PENDING;
+    return toResponse(payment, intent.client_secret);
   }
 
   /** GET /api/payments/:id (ownership is checked by @CheckOwnership). */

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { placeholderBookingPaymentReaders } from './booking-payment-reader.js';
+import { PaymentExpiryService } from './payment-expiry.service.js';
 import { PaymentsController } from './payments.controller.js';
 import { PaymentsService } from './payments.service.js';
 import { PoliciesController } from './policies.controller.js';
@@ -39,6 +40,7 @@ import { stripeProvider } from './stripe.provider.js';
     PoliciesService,
     PaymentsService,
     StripeWebhookService,
+    PaymentExpiryService,
     // TODO(Omar Hashem, Mohamed Hashad): remove once the real readers are bound.
     ...placeholderBookingPaymentReaders,
   ],

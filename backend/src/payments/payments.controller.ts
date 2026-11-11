@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBadGatewayResponse,
   ApiBadRequestResponse,
@@ -74,6 +82,37 @@ export class PaymentsController {
     @Body() dto: CreatePaymentDto,
   ): Promise<PaymentResponseDto> {
     return this.payments.createPayment(userId, dto.bookingType, dto.bookingId);
+  }
+
+  @Post(':id/retry')
+  @HttpCode(HttpStatus.OK)
+  @CheckOwnership({ model: Payment.name })
+  @ApiOperation({
+    summary: 'Retry a failed payment (PAY-01)',
+    description:
+      'Only the owner, only while the booking is Pending Payment inside its 10-minute hold. ' +
+      'Reuses the same Stripe PaymentIntent (no second charge possible) and returns a fresh clientSecret ' +
+      'for Stripe Elements. No attempt limit: PAY-01 allows retries until the hold expires.',
+  })
+  @ApiOkResponse({ type: PaymentResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'INVALID_ID' })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'Payment or booking not found',
+  })
+  @ApiConflictResponse({
+    type: ErrorResponseDto,
+    description: 'PAYMENT_NOT_RETRYABLE, BOOKING_NOT_PAYABLE or HOLD_EXPIRED',
+  })
+  @ApiServiceUnavailableResponse({
+    type: ErrorResponseDto,
+    description: 'STRIPE_NOT_CONFIGURED',
+  })
+  retry(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseObjectIdPipe) id: string,
+  ): Promise<PaymentResponseDto> {
+    return this.payments.retryPayment(userId, id);
   }
 
   @Get(':id')
