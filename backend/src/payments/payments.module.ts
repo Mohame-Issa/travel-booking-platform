@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { placeholderBookingPaymentReaders } from './booking-payment-reader.js';
+import { PoliciesController } from './policies.controller.js';
+import { PoliciesService } from './policies.service.js';
 import { Payment, PaymentSchema } from './schemas/payment.schema.js';
 import {
   PolicyAcceptance,
@@ -13,7 +16,6 @@ import { stripeProvider } from './stripe.provider.js';
 
 /**
  * Payments (PAY-01, PAY-02, PAY-04). Owner: Youssef Khafagy.
- * Controllers and services are added in the next steps.
  */
 @Module({
   imports: [
@@ -23,7 +25,13 @@ import { stripeProvider } from './stripe.provider.js';
       { name: StripeEvent.name, schema: StripeEventSchema },
     ]),
   ],
-  providers: [stripeProvider],
-  exports: [stripeProvider, MongooseModule],
+  controllers: [PoliciesController],
+  providers: [
+    stripeProvider,
+    PoliciesService,
+    // TODO(Omar Hashem, Mohamed Hashad): remove once the real readers are bound.
+    ...placeholderBookingPaymentReaders,
+  ],
+  exports: [stripeProvider, MongooseModule, PoliciesService],
 })
 export class PaymentsModule {}
