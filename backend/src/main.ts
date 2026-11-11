@@ -9,7 +9,9 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { createValidationPipe } from './common/pipes/validation.pipe.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: keeps the exact request bytes in req.rawBody, needed to verify
+  // Stripe webhook signatures (PAY-01, Youssef Khafagy). JSON parsing is unchanged.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix('api');

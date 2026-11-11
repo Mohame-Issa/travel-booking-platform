@@ -14,6 +14,8 @@ import {
   StripeEvent,
   StripeEventSchema,
 } from './schemas/stripe-event.schema.js';
+import { StripeWebhookController } from './stripe-webhook.controller.js';
+import { StripeWebhookService } from './stripe-webhook.service.js';
 import { stripeProvider } from './stripe.provider.js';
 
 /**
@@ -27,11 +29,16 @@ import { stripeProvider } from './stripe.provider.js';
       { name: StripeEvent.name, schema: StripeEventSchema },
     ]),
   ],
-  controllers: [PoliciesController, PaymentsController],
+  controllers: [
+    PoliciesController,
+    PaymentsController,
+    StripeWebhookController,
+  ],
   providers: [
     stripeProvider,
     PoliciesService,
     PaymentsService,
+    StripeWebhookService,
     // TODO(Omar Hashem, Mohamed Hashad): remove once the real readers are bound.
     ...placeholderBookingPaymentReaders,
   ],
