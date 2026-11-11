@@ -7,6 +7,47 @@ Software Project I, Winter 2026. NestJS backend, MongoDB Atlas, Swagger UI
 - Team coding rules for humans and AI tools: [`AI_RULES.md`](AI_RULES.md)
 - AI prompt log: [`AI_PROMPTS.txt`](AI_PROMPTS.txt)
 
+## Flights, search and reference data
+
+Yassin's airline, airport, flight/cabin and hotel-search modules are registered
+in the backend. All 14 assigned endpoints have Swagger request/response/error
+documentation at `/api/docs`. See [the implementation and handoff guide](docs/yassin-implementation.md)
+for request examples, time zones, passenger pricing, inventory fields, events
+and the hotel availability contract.
+
+Run from `backend/`, sequentially:
+
+```powershell
+npm run build
+npm run lint
+npm test
+npm run test:integration
+npm run seed:check
+```
+
+Integration tests create disposable local MongoDB replica sets; they do not load
+`.env` or access the team database. The first run may download a MongoDB test binary.
+`seed:check` validates the official CSVs without connecting to a database.
+It reports eight records in each reference dataset and seven supported currencies.
+
+Actual seeding requires locally configured `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`;
+test moderators additionally use `SEED_AIRLINE_MODERATOR_EMAIL`/`SEED_AIRLINE_MODERATOR_PASSWORD`
+and `SEED_HOTEL_MODERATOR_EMAIL`/`SEED_HOTEL_MODERATOR_PASSWORD`. Variable names are in
+`.env.example`. Existing passwords, profiles and assignments are preserved.
+The command `npm run seed -- --apply --with-demo` writes to the configured database
+and must only be run after explicit approval for that target. Default seed mode
+checks data without database writes.
+
+Hashad's upload resolver is still needed for airline logo edits (those return 501
+until integrated). Omar's real booking consumer must subscribe to the durable
+`flight.updated` and `flight.cancelled` events. Pending events are retained;
+catalogue cancellation does not claim that refunds or notifications have occurred.
+Hashad's hotel management/booking module must follow the documented availability
+representation consumed by hotel search. Those owner modules are not duplicated.
+The [focused follow-up issue report](docs/yassin-follow-up-review.md) records
+the remaining logo/booking integration contracts, legacy booking-history guard,
+currency/date requirement questions and pagination assessment.
+
 ## Backend setup
 
 You need **Node.js 22 or newer** (`node -v`) and git.
