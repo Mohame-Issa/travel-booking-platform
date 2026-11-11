@@ -182,6 +182,9 @@ constructor(@Inject(AUDIT_SERVICE) private readonly audit: AuditService) {}
 | `FLIGHT_BOOKING_LIFECYCLE` | `BookingLifecycleService` | Omar Hashem |
 | `FLIGHT_UPCOMING_BOOKINGS_CHECKER` | `UpcomingConfirmedBookingsChecker` | Omar Hashem |
 | `REFUND_SERVICE` | `RefundService.createRefund()` | Youssef Khafagy |
+| `REFUND_PREVIEW_SERVICE` | `RefundPreviewService.previewRefund()` | Youssef Khafagy |
+| `FLIGHT_BOOKING_PAYMENT_READER` | `BookingPaymentReader.getPaymentSnapshot()` | Omar Hashem |
+| `HOTEL_BOOKING_PAYMENT_READER` | `BookingPaymentReader.getPaymentSnapshot()` | Mohamed Hashad |
 
 Until the owner merges, `common/placeholders/placeholder-integrations.module.ts`
 provides a **temporary placeholder** for each token. **Owners:** when you implement

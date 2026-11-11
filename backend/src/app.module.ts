@@ -9,6 +9,8 @@ import { RolesGuard } from './common/guards/roles.guard.js';
 import { PlaceholderIntegrationsModule } from './common/placeholders/placeholder-integrations.module.js';
 import { validateEnv } from './config/env.validation.js';
 import { HealthController } from './health/health.controller.js';
+import { PaymentsModule } from './payments/payments.module.js';
+import { RefundsModule } from './refunds/refunds.module.js';
 import { AccountsModule } from './users/accounts.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AirlinesModule } from './airlines/airlines.module.js';
@@ -42,6 +44,8 @@ import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
     AuthModule,
     AccountsModule,
     // Feature modules are added below this line, one per teammate PR.
+    PaymentsModule,
+    RefundsModule,
     AirlinesModule,
     AirportsModule,
     FlightsModule,

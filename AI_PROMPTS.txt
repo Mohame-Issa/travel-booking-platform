@@ -244,3 +244,188 @@ returns 401 AUTH_REQUIRED and login accepts and echoes a safe relative
 returnTo path. Verified with unit tests and real requests on the shared
 database (test accounts deleted afterwards). I reviewed the code.
 ================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Gave Claude the project description, the Milestone 1 work split, the
+requirements Excel and the develop branch (AI_RULES.md, common/interfaces),
+described my payments and refunds part, and asked it to extract the exact
+business rules and list assumptions, open questions and integration risks
+before writing any code.
+
+How the output was used:
+Used the extracted rules (10-minute hold from FLT-22/HTL-18, retry until the
+hold expires, tier selection rule from FLT-09/HTL-10, 100% refunds for
+provider cancellations, single platform currency) to plan my module. Raised
+the gaps with the team: booking read access and refund preview (Omar Hashem,
+Mohamed Hashad), rawBody for webhooks and the platform currency (Mohamed Amr).
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Set up Stripe test mode (variable names only, no keys in code) and create the
+Payment, Refund, PolicyAcceptance and processed-webhook-event schemas
+following AI_RULES.md: no card data, amounts in minor units, and indexes that
+prevent double payments, double refunds and double processing of events.
+
+How the output was used:
+Reviewed and committed the schemas, the Stripe client provider, the env
+validation (only sk_test_ / whsec_ values accepted, empty lines treated as
+not set) and the money helpers. Verified with build, lint and unit tests and
+by starting the app against the shared database.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-02
+
+Prompt:
+Build GET /api/bookings/:type/:id/policies and
+POST /api/bookings/:type/:id/accept-policies: owner only, timestamped
+acceptance with a copy of the policies, Swagger docs and unit tests. The
+booking modules are not merged yet, so code against a proposed booking-reader
+interface with clearly marked placeholders.
+
+How the output was used:
+Reviewed and committed the controller, service, DTOs, error codes and tests.
+Decided to store a snapshot of the accepted policy so later moderator edits
+do not change what the user agreed to. Shared the proposed reader contract
+with Omar Hashem, Mohamed Hashad and Mohamed Amr. Checked the error cases in
+Swagger.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-04
+
+Prompt:
+Implement POST /api/payments and GET /api/payments/:id with Stripe
+PaymentIntents in test mode: amount computed by the server from the booking
+in minor units, policy acceptance required first, owner-only access,
+protection against double payments, client secret returned but not stored.
+
+How the output was used:
+Reviewed and committed the payments service, controller, DTOs and tests.
+Double payments are prevented by returning the existing pending payment, a
+Stripe idempotency key per booking and a unique index. Stripe errors return
+502 and a missing key returns 503. The platform currency check is left as a
+TODO for Mohamed Amr (PAY-04).
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01
+
+Prompt:
+Implement the Stripe webhook POST /api/payments/webhook: verify the signature
+over the raw body, process each event id only once, confirm the booking only
+on payment_intent.succeeded, and handle failed and cancelled payment intents
+as PAY-01 requires. Test with real signed payloads.
+
+How the output was used:
+Reviewed and committed the webhook controller, service and tests. Decided
+that a failed payment does not release inventory, because PAY-01 lets the
+user retry until the hold expires. Enabled rawBody in main.ts pending Mohamed
+Amr's approval. Tested real events locally with the Stripe CLI (stripe listen
+and stripe trigger).
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01
+
+Prompt:
+Implement POST /api/payments/:id/retry (reuse the same PaymentIntent, only
+while the booking is still inside its hold) and a job that cancels the
+PaymentIntent and releases inventory when the 10-minute hold expires,
+without racing the webhook.
+
+How the output was used:
+Reviewed and committed the retry endpoint, the expiry service and tests. No
+retry limit is enforced because PAY-01 does not define one. The expiry job
+never cancels a payment that already succeeded and retries the inventory
+release until it goes through.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-03, PAY-01
+
+Prompt:
+Implement the refund function that Omar Hashem's cancellation endpoints call
+(REFUND_SERVICE.createRefund), a refund preview for the cancel screens, and
+GET /api/refunds/:id. Follow FLT-09/HTL-10 for user cancellations and 100%
+for provider cancellations, use the Stripe Refunds API only for positive
+amounts, notify the user, keep the status in sync from webhooks, and refund
+payments that arrive after the hold expired.
+
+How the output was used:
+Reviewed and committed the refund calculator, refunds service, controller,
+DTO and tests, and removed the REFUND_SERVICE placeholder. Decisions: refunds
+use the tiers the user accepted before paying; days remaining are whole days
+rounded down; amounts are rounded down so we never over-refund; a 0% refund
+is recorded without calling Stripe; a Stripe refusal is recorded as Failed
+instead of undoing the cancellation; only one refund per booking. Verified
+with unit tests and a dependency-injection check of the two modules.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Polish the Swagger documentation of all my endpoints (a correct error example
+for every error code instead of the shared 400 example), write a test
+checklist for Swagger and the Stripe CLI, and prepare the pull request into
+develop.
+
+How the output was used:
+Reviewed and committed the ApiErrors decorator, the updated controllers and
+docs/api/payments-testing.md. Checked the generated OpenAPI document lists
+all 7 endpoints with their requirement IDs and error codes. Opened the PR
+into develop listing PAY-01 to PAY-04 and the open items for teammates.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04, GEN-12, FLT-01..FLT-30, HTL-11, HTL-12
+
+Prompt:
+Review Yassin's (#5) and Youssef's (#4) pull requests, work out the merge
+order and merge them if they are good. Then do what Youssef asked the team
+leader for in #4, fix any issues and merge.
+
+How the output was used:
+Claude Code built, linted and tested each PR alone and combined (unit tests,
+plus Yassin's integration tests on a local in-memory MongoDB, never the shared
+database). #5 was merged first because Hashad and Omar depend on its schemas.
+On #4 it resolved the .env.example/app.module.ts conflicts, approved the
+rawBody change, moved the booking-payment-reader and refund-preview contracts
+into common/interfaces (placeholders moved to common/placeholders, tokens
+added to AI_RULES.md section 8) and added PLATFORM_CURRENCY = 'EGP' (PAY-04),
+which payments now enforce. I reviewed the diff before merging.
+================================================

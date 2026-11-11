@@ -37,3 +37,26 @@ export interface RefundService {
 }
 
 export const REFUND_SERVICE = 'REFUND_SERVICE';
+
+/**
+ * FLT-26 / HTL-21: the user sees the refund amount BEFORE confirming the
+ * cancellation. Omar Hashem's cancel flow calls previewRefund() so the amount
+ * shown is computed exactly like the refund that createRefund() pays.
+ * Owner: Youssef Khafagy.
+ */
+export interface RefundPreview {
+  /** Major units, in the booking currency. */
+  amount: number;
+  currency: string;
+  refundPercentage: number;
+  daysBeforeStart: number | null;
+  appliedTierDaysBefore: number | null;
+}
+
+export interface RefundPreviewService {
+  previewRefund(
+    input: Omit<CreateRefundInput, 'requestedBy'>,
+  ): Promise<RefundPreview>;
+}
+
+export const REFUND_PREVIEW_SERVICE = 'REFUND_PREVIEW_SERVICE';
