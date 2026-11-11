@@ -203,3 +203,22 @@ is recorded without calling Stripe; a Stripe refusal is recorded as Failed
 instead of undoing the cancellation; only one refund per booking. Verified
 with unit tests and a dependency-injection check of the two modules.
 ================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Polish the Swagger documentation of all my endpoints (a correct error example
+for every error code instead of the shared 400 example), write a test
+checklist for Swagger and the Stripe CLI, and prepare the pull request into
+develop.
+
+How the output was used:
+Reviewed and committed the ApiErrors decorator, the updated controllers and
+docs/api/payments-testing.md. Checked the generated OpenAPI document lists
+all 7 endpoints with their requirement IDs and error codes. Opened the PR
+into develop listing PAY-01 to PAY-04 and the open items for teammates.
+================================================

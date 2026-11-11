@@ -8,16 +8,15 @@ import {
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
-  ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Public } from '../common/decorators/auth.decorators.js';
-import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
+import { ErrorCode } from '../common/constants/error-codes.js';
+import { ApiErrors } from './api-errors.decorator.js';
 import {
   StripeWebhookService,
   type WebhookResult,
@@ -55,14 +54,8 @@ export class StripeWebhookController {
     description:
       'Event accepted (or ignored because it is not ours / already processed)',
   })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'INVALID_WEBHOOK_SIGNATURE',
-  })
-  @ApiServiceUnavailableResponse({
-    type: ErrorResponseDto,
-    description: 'STRIPE_NOT_CONFIGURED',
-  })
+  @ApiErrors(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_WEBHOOK_SIGNATURE)
+  @ApiErrors(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.STRIPE_NOT_CONFIGURED)
   handle(
     @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string | undefined,

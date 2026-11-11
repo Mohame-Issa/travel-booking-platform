@@ -8,22 +8,16 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiBadGatewayResponse,
-  ApiBadRequestResponse,
-  ApiConflictResponse,
   ApiCookieAuth,
   ApiCreatedResponse,
-  ApiForbiddenResponse,
-  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiServiceUnavailableResponse,
   ApiTags,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { UserRole } from '../common/constants/roles.js';
 import { CurrentUser, Roles } from '../common/decorators/auth.decorators.js';
-import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
+import { ErrorCode } from '../common/constants/error-codes.js';
+import { ApiErrors } from './api-errors.decorator.js';
 import { CheckOwnership } from '../common/guards/ownership.guard.js';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe.js';
 import { CreatePaymentDto, PaymentResponseDto } from './dto/payment.dto.js';
@@ -32,14 +26,16 @@ import { Payment } from './schemas/payment.schema.js';
 
 @ApiTags('Payments')
 @ApiCookieAuth()
-@ApiUnauthorizedResponse({
-  type: ErrorResponseDto,
-  description: 'AUTH_REQUIRED or SESSION_EXPIRED',
-})
-@ApiForbiddenResponse({
-  type: ErrorResponseDto,
-  description: 'NOT_RESOURCE_OWNER or INSUFFICIENT_ROLE',
-})
+@ApiErrors(
+  HttpStatus.UNAUTHORIZED,
+  ErrorCode.AUTH_REQUIRED,
+  ErrorCode.SESSION_EXPIRED,
+)
+@ApiErrors(
+  HttpStatus.FORBIDDEN,
+  ErrorCode.NOT_RESOURCE_OWNER,
+  ErrorCode.INSUFFICIENT_ROLE,
+)
 @Roles(UserRole.USER)
 @Controller('payments')
 export class PaymentsController {
@@ -47,36 +43,31 @@ export class PaymentsController {
 
   @Post()
   @ApiOperation({
-    summary: 'Start paying for a booking with Stripe (PAY-01)',
+    summary: 'Start paying for a booking with Stripe (PAY-01, PAY-02, PAY-04)',
     description:
       'Creates a Stripe PaymentIntent (test mode) for a Pending Payment flight booking or hotel reservation ' +
       'inside its 10-minute hold, and returns its clientSecret for Stripe Elements. ' +
-      'The amount is computed by the server from the booking. Policies must be accepted first (PAY-02). ' +
+      'The amount is computed by the server from the booking, in the single platform currency (PAY-04). Policies must be accepted first (PAY-02). ' +
       'The booking is NOT confirmed here: only the Stripe webhook confirms it. ' +
       'Calling it again while pending returns the same payment.',
   })
   @ApiCreatedResponse({ type: PaymentResponseDto })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'VALIDATION_FAILED',
+  @ApiErrors(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED)
+  @ApiErrors(HttpStatus.NOT_FOUND, {
+    code: ErrorCode.NOT_FOUND,
+    message: 'Booking not found',
   })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'Booking not found',
-  })
-  @ApiConflictResponse({
-    type: ErrorResponseDto,
-    description:
-      'BOOKING_NOT_PAYABLE, HOLD_EXPIRED, POLICIES_NOT_ACCEPTED or PAYMENT_ALREADY_EXISTS',
-  })
-  @ApiBadGatewayResponse({
-    type: ErrorResponseDto,
-    description: 'PAYMENT_PROVIDER_ERROR (Stripe)',
-  })
-  @ApiServiceUnavailableResponse({
-    type: ErrorResponseDto,
-    description: 'STRIPE_NOT_CONFIGURED',
-  })
+  @ApiErrors(
+    HttpStatus.CONFLICT,
+    ErrorCode.BOOKING_NOT_PAYABLE,
+    ErrorCode.HOLD_EXPIRED,
+    ErrorCode.POLICIES_NOT_ACCEPTED,
+    ErrorCode.PAYMENT_ALREADY_EXISTS,
+  )
+  @ApiErrors(HttpStatus.UNPROCESSABLE_ENTITY, ErrorCode.UNSUPPORTED_CURRENCY)
+  @ApiErrors(HttpStatus.NOT_IMPLEMENTED, ErrorCode.NOT_IMPLEMENTED)
+  @ApiErrors(HttpStatus.BAD_GATEWAY, ErrorCode.PAYMENT_PROVIDER_ERROR)
+  @ApiErrors(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.STRIPE_NOT_CONFIGURED)
   create(
     @CurrentUser('id') userId: string,
     @Body() dto: CreatePaymentDto,
@@ -95,19 +86,19 @@ export class PaymentsController {
       'for Stripe Elements. No attempt limit: PAY-01 allows retries until the hold expires.',
   })
   @ApiOkResponse({ type: PaymentResponseDto })
-  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'INVALID_ID' })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'Payment or booking not found',
+  @ApiErrors(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ID)
+  @ApiErrors(HttpStatus.NOT_FOUND, {
+    code: ErrorCode.NOT_FOUND,
+    message: 'Payment not found',
   })
-  @ApiConflictResponse({
-    type: ErrorResponseDto,
-    description: 'PAYMENT_NOT_RETRYABLE, BOOKING_NOT_PAYABLE or HOLD_EXPIRED',
-  })
-  @ApiServiceUnavailableResponse({
-    type: ErrorResponseDto,
-    description: 'STRIPE_NOT_CONFIGURED',
-  })
+  @ApiErrors(
+    HttpStatus.CONFLICT,
+    ErrorCode.PAYMENT_NOT_RETRYABLE,
+    ErrorCode.BOOKING_NOT_PAYABLE,
+    ErrorCode.HOLD_EXPIRED,
+  )
+  @ApiErrors(HttpStatus.NOT_IMPLEMENTED, ErrorCode.NOT_IMPLEMENTED)
+  @ApiErrors(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.STRIPE_NOT_CONFIGURED)
   retry(
     @CurrentUser('id') userId: string,
     @Param('id', ParseObjectIdPipe) id: string,
@@ -123,10 +114,10 @@ export class PaymentsController {
       'Only the owner. Status: pending, failed, succeeded (verified by webhook) or cancelled (hold expired).',
   })
   @ApiOkResponse({ type: PaymentResponseDto })
-  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'INVALID_ID' })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'Payment not found',
+  @ApiErrors(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ID)
+  @ApiErrors(HttpStatus.NOT_FOUND, {
+    code: ErrorCode.NOT_FOUND,
+    message: 'Payment not found',
   })
   findOne(
     @Param('id', ParseObjectIdPipe) id: string,

@@ -8,19 +8,15 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
-  ApiConflictResponse,
   ApiCookieAuth,
-  ApiForbiddenResponse,
-  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { UserRole } from '../common/constants/roles.js';
 import { CurrentUser, Roles } from '../common/decorators/auth.decorators.js';
-import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
+import { ErrorCode } from '../common/constants/error-codes.js';
+import { ApiErrors } from './api-errors.decorator.js';
 import {
   AcceptPoliciesDto,
   BookingPoliciesResponseDto,
@@ -30,18 +26,21 @@ import { PoliciesService } from './policies.service.js';
 
 @ApiTags('Payments')
 @ApiCookieAuth()
-@ApiUnauthorizedResponse({
-  type: ErrorResponseDto,
-  description: 'AUTH_REQUIRED or SESSION_EXPIRED',
+@ApiErrors(
+  HttpStatus.UNAUTHORIZED,
+  ErrorCode.AUTH_REQUIRED,
+  ErrorCode.SESSION_EXPIRED,
+)
+@ApiErrors(
+  HttpStatus.FORBIDDEN,
+  ErrorCode.NOT_RESOURCE_OWNER,
+  ErrorCode.INSUFFICIENT_ROLE,
+)
+@ApiErrors(HttpStatus.NOT_FOUND, {
+  code: ErrorCode.NOT_FOUND,
+  message: 'Booking not found',
 })
-@ApiForbiddenResponse({
-  type: ErrorResponseDto,
-  description: 'NOT_RESOURCE_OWNER or INSUFFICIENT_ROLE',
-})
-@ApiNotFoundResponse({
-  type: ErrorResponseDto,
-  description: 'Booking not found',
-})
+@ApiErrors(HttpStatus.NOT_IMPLEMENTED, ErrorCode.NOT_IMPLEMENTED)
 @Roles(UserRole.USER)
 @Controller('bookings/:type/:id')
 export class PoliciesController {
@@ -56,10 +55,11 @@ export class PoliciesController {
       'Only the booking owner. After acceptance, returns the accepted snapshot.',
   })
   @ApiOkResponse({ type: BookingPoliciesResponseDto })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'type must be flight or hotel; invalid id',
-  })
+  @ApiErrors(
+    HttpStatus.BAD_REQUEST,
+    ErrorCode.VALIDATION_FAILED,
+    ErrorCode.INVALID_ID,
+  )
   getPolicies(
     @CurrentUser('id') userId: string,
     @Param() params: BookingRefParamsDto,
@@ -77,14 +77,12 @@ export class PoliciesController {
       'Calling it again returns the original acceptance.',
   })
   @ApiOkResponse({ type: BookingPoliciesResponseDto })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'VALIDATION_FAILED (accepted must be true)',
-  })
-  @ApiConflictResponse({
-    type: ErrorResponseDto,
-    description: 'BOOKING_NOT_PAYABLE or HOLD_EXPIRED',
-  })
+  @ApiErrors(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_FAILED)
+  @ApiErrors(
+    HttpStatus.CONFLICT,
+    ErrorCode.BOOKING_NOT_PAYABLE,
+    ErrorCode.HOLD_EXPIRED,
+  )
   acceptPolicies(
     @CurrentUser('id') userId: string,
     @Param() params: BookingRefParamsDto,

@@ -1,17 +1,14 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, HttpStatus } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
   ApiCookieAuth,
-  ApiForbiddenResponse,
-  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { UserRole } from '../common/constants/roles.js';
 import { Roles } from '../common/decorators/auth.decorators.js';
-import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
+import { ErrorCode } from '../common/constants/error-codes.js';
+import { ApiErrors } from '../payments/api-errors.decorator.js';
 import { CheckOwnership } from '../common/guards/ownership.guard.js';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe.js';
 import { RefundResponseDto } from './dto/refund.dto.js';
@@ -20,14 +17,16 @@ import { Refund } from './schemas/refund.schema.js';
 
 @ApiTags('Refunds')
 @ApiCookieAuth()
-@ApiUnauthorizedResponse({
-  type: ErrorResponseDto,
-  description: 'AUTH_REQUIRED or SESSION_EXPIRED',
-})
-@ApiForbiddenResponse({
-  type: ErrorResponseDto,
-  description: 'NOT_RESOURCE_OWNER or INSUFFICIENT_ROLE',
-})
+@ApiErrors(
+  HttpStatus.UNAUTHORIZED,
+  ErrorCode.AUTH_REQUIRED,
+  ErrorCode.SESSION_EXPIRED,
+)
+@ApiErrors(
+  HttpStatus.FORBIDDEN,
+  ErrorCode.NOT_RESOURCE_OWNER,
+  ErrorCode.INSUFFICIENT_ROLE,
+)
 @Roles(UserRole.USER)
 @Controller('refunds')
 export class RefundsController {
@@ -43,10 +42,10 @@ export class RefundsController {
       'Refunds are created by the cancellation endpoints, not here.',
   })
   @ApiOkResponse({ type: RefundResponseDto })
-  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'INVALID_ID' })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'Refund not found',
+  @ApiErrors(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_ID)
+  @ApiErrors(HttpStatus.NOT_FOUND, {
+    code: ErrorCode.NOT_FOUND,
+    message: 'Refund not found',
   })
   findOne(
     @Param('id', ParseObjectIdPipe) id: string,
