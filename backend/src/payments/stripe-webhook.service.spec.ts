@@ -78,6 +78,10 @@ function setup(paymentOver: Record<string, unknown> | null = {}) {
   };
   const payments = { stripe: () => stripe };
   const config = { get: () => SECRET };
+  const refunds = {
+    refundLatePayment: vi.fn().mockResolvedValue(undefined),
+    onStripeRefundUpdated: vi.fn().mockResolvedValue(undefined),
+  };
   const service = new StripeWebhookService(
     paymentModel as never,
     eventModel as never,
@@ -85,8 +89,9 @@ function setup(paymentOver: Record<string, unknown> | null = {}) {
     hotels,
     payments as never,
     config as never,
+    refunds,
   );
-  return { service, paymentModel, eventModel, flights, hotels };
+  return { service, paymentModel, eventModel, flights, hotels, refunds };
 }
 
 describe('StripeWebhookService (PAY-01)', () => {
@@ -148,14 +153,42 @@ describe('StripeWebhookService (PAY-01)', () => {
     expect(flights.confirmBooking).not.toHaveBeenCalled();
   });
 
-  it('does not confirm a payment whose hold already expired (GEN-11)', async () => {
-    const { service, hotels } = setup({
+  it('does not confirm a payment whose hold already expired, refunds it (GEN-11)', async () => {
+    const { service, hotels, refunds } = setup({
       bookingType: 'hotel',
       status: PaymentStatus.CANCELLED,
     });
     const { body, header } = signed('payment_intent.succeeded', intent());
     await service.handle(body, header);
     expect(hotels.confirmBooking).not.toHaveBeenCalled();
+    expect(refunds.refundLatePayment).toHaveBeenCalledWith('pay_1');
+  });
+
+  it('refunds in full when the booking can no longer be confirmed (409)', async () => {
+    const { service, flights, refunds } = setup();
+    flights.confirmBooking.mockRejectedValue(
+      new ApiException(
+        HttpStatus.CONFLICT,
+        ErrorCode.CONFLICT,
+        'Booking expired',
+      ),
+    );
+    const { body, header } = signed('payment_intent.succeeded', intent());
+    expect(await service.handle(body, header)).toEqual({ received: true });
+    expect(refunds.refundLatePayment).toHaveBeenCalledWith('pay_1');
+  });
+
+  it('refund.updated is passed to the refunds module (PAY-03 status)', async () => {
+    const { service, refunds } = setup();
+    const { body, header } = signed('refund.updated', {
+      id: 're_1',
+      object: 'refund',
+      status: 'succeeded',
+    });
+    await service.handle(body, header);
+    expect(refunds.onStripeRefundUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 're_1', status: 'succeeded' }),
+    );
   });
 
   it('payment_failed: marks failed, keeps the hold (user may retry), releases nothing', async () => {

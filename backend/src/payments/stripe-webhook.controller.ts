@@ -42,7 +42,7 @@ export class StripeWebhookController {
       'Called by Stripe (or `stripe listen` locally), not by users or Swagger. ' +
       'The Stripe-Signature header is verified over the raw body with STRIPE_WEBHOOK_SECRET. ' +
       'payment_intent.succeeded confirms the booking; payment_intent.payment_failed marks the ' +
-      'payment failed (the user may retry until the hold expires); payment_intent.canceled marks it cancelled. ' +
+      'payment failed (the user may retry until the hold expires); payment_intent.canceled marks it cancelled; refund.updated / refund.failed update the refund status (PAY-03). ' +
       'Each event id is processed once; replays return duplicate: true.',
   })
   @ApiHeader({

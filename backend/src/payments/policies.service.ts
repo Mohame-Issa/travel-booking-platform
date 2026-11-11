@@ -43,8 +43,7 @@ export class PoliciesService {
     type: BookingType,
     bookingId: string,
   ): Promise<BookingPaymentSnapshot> {
-    const reader = type === 'flight' ? this.flightReader : this.hotelReader;
-    const booking = await reader.getPaymentSnapshot(bookingId);
+    const booking = await this.getBooking(type, bookingId);
     if (!booking) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
@@ -60,6 +59,15 @@ export class PoliciesService {
       );
     }
     return booking;
+  }
+
+  /** Reads a booking without an owner check (system use, e.g. refunds). */
+  getBooking(
+    type: BookingType,
+    bookingId: string,
+  ): Promise<BookingPaymentSnapshot | null> {
+    const reader = type === 'flight' ? this.flightReader : this.hotelReader;
+    return reader.getPaymentSnapshot(bookingId);
   }
 
   /**

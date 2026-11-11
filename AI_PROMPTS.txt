@@ -179,3 +179,27 @@ retry limit is enforced because PAY-01 does not define one. The expiry job
 never cancels a payment that already succeeded and retries the inventory
 release until it goes through.
 ================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-03, PAY-01
+
+Prompt:
+Implement the refund function that Omar Hashem's cancellation endpoints call
+(REFUND_SERVICE.createRefund), a refund preview for the cancel screens, and
+GET /api/refunds/:id. Follow FLT-09/HTL-10 for user cancellations and 100%
+for provider cancellations, use the Stripe Refunds API only for positive
+amounts, notify the user, keep the status in sync from webhooks, and refund
+payments that arrive after the hold expired.
+
+How the output was used:
+Reviewed and committed the refund calculator, refunds service, controller,
+DTO and tests, and removed the REFUND_SERVICE placeholder. Decisions: refunds
+use the tiers the user accepted before paying; days remaining are whole days
+rounded down; amounts are rounded down so we never over-refund; a 0% refund
+is recorded without calling Stripe; a Stripe refusal is recorded as Failed
+instead of undoing the cancellation; only one refund per booking. Verified
+with unit tests and a dependency-injection check of the two modules.
+================================================

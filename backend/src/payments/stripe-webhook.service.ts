@@ -19,6 +19,7 @@ import {
 } from '../common/interfaces/index.js';
 import { PaymentStatus } from './payments.constants.js';
 import { PaymentsService } from './payments.service.js';
+import { REFUND_HOOKS, type RefundHooks } from './refund-hooks.js';
 import { Payment, type PaymentDocument } from './schemas/payment.schema.js';
 import { StripeEvent } from './schemas/stripe-event.schema.js';
 
@@ -51,6 +52,7 @@ export class StripeWebhookService {
     private readonly hotels: BookingLifecycleService,
     private readonly payments: PaymentsService,
     private readonly config: ConfigService,
+    @Inject(REFUND_HOOKS) private readonly refunds: RefundHooks,
   ) {}
 
   async handle(
@@ -128,6 +130,10 @@ export class StripeWebhookService {
         return this.onFailed(event.data.object);
       case 'payment_intent.canceled':
         return this.onCanceled(event.data.object);
+      case 'refund.updated':
+      case 'refund.failed':
+        // PAY-03: keep the refund status (Pending/Refunded/Failed) in sync.
+        return this.refunds.onStripeRefundUpdated(event.data.object);
       default:
         // Other event types are acknowledged and ignored.
         return;
@@ -153,10 +159,11 @@ export class StripeWebhookService {
 
     if (payment.status === PaymentStatus.CANCELLED) {
       // The hold expired before the money arrived (GEN-11 forbids
-      // Expired -> Confirmed). TODO(step 7, Youssef): refund in full automatically.
+      // Expired -> Confirmed), so the money goes back in full.
       this.logger.warn(
-        `Payment ${payment.id} succeeded after its hold expired`,
+        `Payment ${payment.id} succeeded after its hold expired; refunding`,
       );
+      await this.refunds.refundLatePayment(payment.id as string);
       return;
     }
 
@@ -183,11 +190,12 @@ export class StripeWebhookService {
         err instanceof HttpException &&
         err.getStatus() === HttpStatus.CONFLICT
       ) {
-        // The booking can no longer be confirmed (e.g. it just expired).
-        // TODO(step 7, Youssef): refund in full automatically.
+        // The booking can no longer be confirmed (e.g. it just expired),
+        // so the money goes back in full.
         this.logger.warn(
-          `Booking for payment ${payment.id} could not be confirmed: ${err.message}`,
+          `Booking for payment ${payment.id} could not be confirmed: ${err.message}; refunding`,
         );
+        await this.refunds.refundLatePayment(payment.id as string);
         return;
       }
       throw err; // temporary problem: let Stripe retry

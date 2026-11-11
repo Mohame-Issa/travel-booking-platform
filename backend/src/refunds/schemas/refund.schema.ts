@@ -29,12 +29,22 @@ export class Refund {
   @Prop({ type: Types.ObjectId, required: true })
   bookingId: Types.ObjectId;
 
+  /**
+   * Shared RefundReason values, plus 'late_payment' (ours only): the payment
+   * succeeded after the hold expired, so the booking could not be confirmed
+   * (GEN-11) and the money is given back in full.
+   */
   @Prop({
     type: String,
-    enum: ['user_cancellation', 'provider_cancellation', 'flight_cancelled'],
+    enum: [
+      'user_cancellation',
+      'provider_cancellation',
+      'flight_cancelled',
+      'late_payment',
+    ],
     required: true,
   })
-  reason: RefundReason;
+  reason: RefundReason | 'late_payment';
 
   /** User who cancelled; null for system-triggered refunds (FLT-06). */
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
