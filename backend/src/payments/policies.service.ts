@@ -10,7 +10,7 @@ import {
   type BookingPolicies,
   FLIGHT_BOOKING_PAYMENT_READER,
   HOTEL_BOOKING_PAYMENT_READER,
-} from './booking-payment-reader.js';
+} from '../common/interfaces/index.js';
 import type { BookingPoliciesResponseDto } from './dto/policies.dto.js';
 import {
   PolicyAcceptance,

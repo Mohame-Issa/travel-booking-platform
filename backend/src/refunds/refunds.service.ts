@@ -29,7 +29,10 @@ import {
   calculateRefund,
   type RefundCalculation,
 } from './refund-calculator.js';
-import type { RefundPreview, RefundPreviewService } from './refund-preview.js';
+import type {
+  RefundPreview,
+  RefundPreviewService,
+} from '../common/interfaces/index.js';
 import { Refund, type RefundDocument } from './schemas/refund.schema.js';
 
 /** Mongo duplicate-key error code. */

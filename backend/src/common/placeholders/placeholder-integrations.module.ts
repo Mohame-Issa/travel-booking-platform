@@ -26,6 +26,8 @@
  *   HOTEL_BOOKING_LIFECYCLE            Mohamed Hashad    throws 501
  *   FLIGHT_UPCOMING_BOOKINGS_CHECKER   Omar Hashem       returns false
  *   FLIGHT_BOOKING_LIFECYCLE           Omar Hashem       throws 501
+ *   FLIGHT_BOOKING_PAYMENT_READER      Omar Hashem       throws 501
+ *   HOTEL_BOOKING_PAYMENT_READER       Mohamed Hashad    throws 501
  */
 import { Global, HttpStatus, Injectable, Logger, Module } from '@nestjs/common';
 import { ErrorCode } from '../constants/error-codes.js';
@@ -35,9 +37,13 @@ import {
   AuditLogInput,
   AuditService,
   BookingLifecycleService,
+  BookingPaymentReader,
+  BookingPaymentSnapshot,
+  FLIGHT_BOOKING_PAYMENT_READER,
   FLIGHT_BOOKING_LIFECYCLE,
   FLIGHT_UPCOMING_BOOKINGS_CHECKER,
   HOTEL_BOOKING_LIFECYCLE,
+  HOTEL_BOOKING_PAYMENT_READER,
   HOTEL_UPCOMING_BOOKINGS_CHECKER,
   NOTIFICATION_SERVICE,
   NotificationService,
@@ -97,6 +103,14 @@ class PlaceholderBookingLifecycle implements BookingLifecycleService {
   }
 }
 
+/** TEMPORARY: replaced by the flight and hotel booking modules. */
+class PlaceholderBookingPaymentReader implements BookingPaymentReader {
+  constructor(private readonly token: string) {}
+  getPaymentSnapshot(): Promise<BookingPaymentSnapshot | null> {
+    return Promise.reject(notMerged(this.token));
+  }
+}
+
 function notMerged(token: string): ApiException {
   return new ApiException(
     HttpStatus.NOT_IMPLEMENTED,
@@ -130,6 +144,18 @@ function notMerged(token: string): ApiException {
       provide: HOTEL_BOOKING_LIFECYCLE,
       useValue: new PlaceholderBookingLifecycle(HOTEL_BOOKING_LIFECYCLE),
     },
+    {
+      provide: FLIGHT_BOOKING_PAYMENT_READER,
+      useValue: new PlaceholderBookingPaymentReader(
+        FLIGHT_BOOKING_PAYMENT_READER,
+      ),
+    },
+    {
+      provide: HOTEL_BOOKING_PAYMENT_READER,
+      useValue: new PlaceholderBookingPaymentReader(
+        HOTEL_BOOKING_PAYMENT_READER,
+      ),
+    },
   ],
   exports: [
     AUDIT_SERVICE,
@@ -138,6 +164,8 @@ function notMerged(token: string): ApiException {
     HOTEL_UPCOMING_BOOKINGS_CHECKER,
     FLIGHT_BOOKING_LIFECYCLE,
     HOTEL_BOOKING_LIFECYCLE,
+    FLIGHT_BOOKING_PAYMENT_READER,
+    HOTEL_BOOKING_PAYMENT_READER,
   ],
 })
 export class PlaceholderIntegrationsModule {}

@@ -5,7 +5,7 @@ import { BookingStatus } from '../common/interfaces/index.js';
 import type {
   BookingPaymentReader,
   BookingPaymentSnapshot,
-} from './booking-payment-reader.js';
+} from '../common/interfaces/index.js';
 import { PoliciesService } from './policies.service.js';
 
 const OWNER = '64b000000000000000000001';

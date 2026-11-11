@@ -16,7 +16,7 @@ function setup(
       bookingId: BOOKING,
       userId: OWNER,
       totalAmount: 250.5,
-      currency: opts.currency ?? 'USD',
+      currency: opts.currency ?? 'EGP',
       holdExpiresAt: HOLD,
     }),
     assertPayable: vi.fn().mockReturnValue(HOLD),
@@ -69,7 +69,7 @@ describe('PaymentsService.createPayment (PAY-01)', () => {
 
     const [params, options] = stripe.paymentIntents.create.mock.calls[0];
     expect(params.amount).toBe(25050);
-    expect(params.currency).toBe('usd');
+    expect(params.currency).toBe('egp');
     expect(params.metadata).toEqual({
       bookingType: 'flight',
       bookingId: BOOKING,
@@ -114,7 +114,7 @@ describe('PaymentsService.createPayment (PAY-01)', () => {
       bookingId: { toString: () => BOOKING },
       status: PaymentStatus.PENDING,
       amountMinor: 25050,
-      currency: 'USD',
+      currency: 'EGP',
       stripePaymentIntentId: 'pi_123',
       holdExpiresAt: HOLD,
       succeededAt: null,
@@ -134,12 +134,16 @@ describe('PaymentsService.createPayment (PAY-01)', () => {
     );
   });
 
-  it('rejects currencies outside the supported list', async () => {
-    const { service } = setup({ currency: 'XYZ' });
-    expect(await codeOf(service.createPayment(OWNER, 'flight', BOOKING))).toBe(
-      ErrorCode.UNSUPPORTED_CURRENCY,
-    );
-  });
+  it.each(['XYZ', 'USD'])(
+    'PAY-04: rejects %s (not the platform currency)',
+    async (currency) => {
+      const { service, stripe } = setup({ currency });
+      expect(
+        await codeOf(service.createPayment(OWNER, 'flight', BOOKING)),
+      ).toBe(ErrorCode.UNSUPPORTED_CURRENCY);
+      expect(stripe.paymentIntents.create).not.toHaveBeenCalled();
+    },
+  );
 
   it('503 STRIPE_NOT_CONFIGURED without a Stripe key', async () => {
     const { model, policies } = setup();
@@ -167,7 +171,7 @@ describe('PaymentsService.retryPayment (PAY-01)', () => {
       bookingId: { toString: () => BOOKING },
       status,
       amountMinor: 25050,
-      currency: 'USD',
+      currency: 'EGP',
       stripePaymentIntentId: 'pi_123',
       holdExpiresAt: HOLD,
       succeededAt: null,

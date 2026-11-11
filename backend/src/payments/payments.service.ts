@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import Stripe from 'stripe';
 import { ErrorCode } from '../common/constants/error-codes.js';
-import { SUPPORTED_CURRENCIES } from '../common/constants/currencies.js';
+import { PLATFORM_CURRENCY } from '../common/constants/currencies.js';
 import { ApiException } from '../common/exceptions/api.exception.js';
 import type { BookingType } from '../common/interfaces/index.js';
 import type { PaymentResponseDto } from './dto/payment.dto.js';
@@ -245,17 +245,15 @@ export class PaymentsService {
 
   /**
    * PAY-04: all prices, payments and refunds use a single platform currency.
-   * TODO(Mohamed Amr): the team has not chosen the platform currency yet.
-   * Once a PLATFORM_CURRENCY constant exists in common/constants/currencies.ts,
-   * reject any booking whose currency differs from it.
+   * A booking in any other currency cannot be paid.
    */
   private checkCurrency(currency: string): string {
     const code = currency.toUpperCase();
-    if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(code)) {
+    if (code !== PLATFORM_CURRENCY) {
       throw new ApiException(
         HttpStatus.UNPROCESSABLE_ENTITY,
         ErrorCode.UNSUPPORTED_CURRENCY,
-        `Currency ${code} is not supported`,
+        `Currency ${code} is not supported; payments use ${PLATFORM_CURRENCY} (PAY-04)`,
       );
     }
     return code;

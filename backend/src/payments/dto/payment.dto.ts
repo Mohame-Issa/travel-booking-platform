@@ -39,7 +39,7 @@ export class PaymentResponseDto {
   })
   amountMinor: number;
 
-  @ApiProperty({ example: 'USD' })
+  @ApiProperty({ example: 'EGP' })
   currency: string;
 
   @ApiProperty({ example: 'pi_3Q...', description: 'Stripe PaymentIntent id' })

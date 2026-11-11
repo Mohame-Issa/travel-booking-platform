@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { REFUND_SERVICE } from '../common/interfaces/index.js';
 import { REFUND_HOOKS } from '../payments/refund-hooks.js';
 import { PaymentsModule } from '../payments/payments.module.js';
-import { REFUND_PREVIEW_SERVICE } from './refund-preview.js';
+import { REFUND_PREVIEW_SERVICE } from '../common/interfaces/index.js';
 import { RefundsController } from './refunds.controller.js';
 import { RefundsService } from './refunds.service.js';
 import { Refund, RefundSchema } from './schemas/refund.schema.js';

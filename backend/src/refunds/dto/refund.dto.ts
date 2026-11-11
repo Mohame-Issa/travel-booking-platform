@@ -63,7 +63,7 @@ export class RefundResponseDto {
   @ApiProperty({ example: 12525, description: 'Minor units' })
   amountMinor: number;
 
-  @ApiProperty({ example: 'USD' })
+  @ApiProperty({ example: 'EGP' })
   currency: string;
 
   @ApiPropertyOptional({

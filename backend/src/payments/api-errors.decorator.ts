@@ -23,7 +23,8 @@ const MESSAGES: Partial<Record<ErrorCode, string>> = {
   [ErrorCode.PAYMENT_ALREADY_EXISTS]:
     'The previous attempt failed. Use POST /api/payments/:id/retry',
   [ErrorCode.PAYMENT_NOT_RETRYABLE]: 'A succeeded payment cannot be retried',
-  [ErrorCode.UNSUPPORTED_CURRENCY]: 'Currency XYZ is not supported',
+  [ErrorCode.UNSUPPORTED_CURRENCY]:
+    'Currency USD is not supported; payments use EGP (PAY-04)',
   [ErrorCode.PAYMENT_PROVIDER_ERROR]: 'Payment provider error: ...',
   [ErrorCode.STRIPE_NOT_CONFIGURED]:
     'Payments are not configured on this server (STRIPE_SECRET_KEY missing)',

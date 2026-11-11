@@ -1,4 +1,4 @@
-import type { CancellationTier } from '../payments/booking-payment-reader.js';
+import type { CancellationTier } from '../common/interfaces/index.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

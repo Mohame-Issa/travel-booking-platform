@@ -407,3 +407,25 @@ docs/api/payments-testing.md. Checked the generated OpenAPI document lists
 all 7 endpoints with their requirement IDs and error codes. Opened the PR
 into develop listing PAY-01 to PAY-04 and the open items for teammates.
 ================================================
+
+================================================
+Date: 2026-11-11
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04, GEN-12, FLT-01..FLT-30, HTL-11, HTL-12
+
+Prompt:
+Review Yassin's (#5) and Youssef's (#4) pull requests, work out the merge
+order and merge them if they are good. Then do what Youssef asked the team
+leader for in #4, fix any issues and merge.
+
+How the output was used:
+Claude Code built, linted and tested each PR alone and combined (unit tests,
+plus Yassin's integration tests on a local in-memory MongoDB, never the shared
+database). #5 was merged first because Hashad and Omar depend on its schemas.
+On #4 it resolved the .env.example/app.module.ts conflicts, approved the
+rawBody change, moved the booking-payment-reader and refund-preview contracts
+into common/interfaces (placeholders moved to common/placeholders, tokens
+added to AI_RULES.md section 8) and added PLATFORM_CURRENCY = 'EGP' (PAY-04),
+which payments now enforce. I reviewed the diff before merging.
+================================================
