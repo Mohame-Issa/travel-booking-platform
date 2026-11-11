@@ -13,6 +13,10 @@ import {
   validateSync,
 } from 'class-validator';
 
+/** An empty line like `STRIPE_WEBHOOK_SECRET=` in .env means "not set". */
+const emptyToUndefined = ({ value }: { value: unknown }) =>
+  value === '' ? undefined : value;
+
 /**
  * Environment variables the backend needs. Values come from backend/.env
  * (never committed). Variable NAMES are documented in /.env.example.
@@ -56,11 +60,13 @@ export class EnvironmentVariables {
    * Stripe secret key (PAY-01). TEST mode only, so it must start with sk_test_.
    * Optional: without it the app starts but payment endpoints answer 503.
    */
+  @Transform(emptyToUndefined)
   @IsOptional()
   @Matches(/^sk_test_/, { message: 'must be a Stripe TEST key (sk_test_...)' })
   STRIPE_SECRET_KEY?: string;
 
   /** Signing secret of the webhook endpoint or of `stripe listen` (whsec_...). */
+  @Transform(emptyToUndefined)
   @IsOptional()
   @Matches(/^whsec_/, {
     message: 'must be a Stripe webhook secret (whsec_...)',
