@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   Max,
   Min,
   MinLength,
@@ -50,6 +51,21 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   FRONTEND_URL?: string;
+
+  /**
+   * Stripe secret key (PAY-01). TEST mode only, so it must start with sk_test_.
+   * Optional: without it the app starts but payment endpoints answer 503.
+   */
+  @IsOptional()
+  @Matches(/^sk_test_/, { message: 'must be a Stripe TEST key (sk_test_...)' })
+  STRIPE_SECRET_KEY?: string;
+
+  /** Signing secret of the webhook endpoint or of `stripe listen` (whsec_...). */
+  @IsOptional()
+  @Matches(/^whsec_/, {
+    message: 'must be a Stripe webhook secret (whsec_...)',
+  })
+  STRIPE_WEBHOOK_SECRET?: string;
 }
 
 export function validateEnv(
