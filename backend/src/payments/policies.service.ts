@@ -64,9 +64,9 @@ export class PoliciesService {
 
   /**
    * PAY-01 / GEN-11: only a Pending Payment booking inside its hold can be paid
-   * (and therefore have its policies accepted).
+   * (and therefore have its policies accepted). Returns the hold expiry.
    */
-  assertPayable(booking: BookingPaymentSnapshot, now = new Date()): void {
+  assertPayable(booking: BookingPaymentSnapshot, now = new Date()): Date {
     if (booking.status !== BookingStatus.PENDING_PAYMENT) {
       throw new ApiException(
         HttpStatus.CONFLICT,
@@ -81,6 +81,7 @@ export class PoliciesService {
         'The hold on this booking has expired',
       );
     }
+    return booking.holdExpiresAt;
   }
 
   /** GET /api/bookings/:type/:id/policies */

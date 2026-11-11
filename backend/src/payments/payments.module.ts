@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { placeholderBookingPaymentReaders } from './booking-payment-reader.js';
+import { PaymentsController } from './payments.controller.js';
+import { PaymentsService } from './payments.service.js';
 import { PoliciesController } from './policies.controller.js';
 import { PoliciesService } from './policies.service.js';
 import { Payment, PaymentSchema } from './schemas/payment.schema.js';
@@ -25,13 +27,14 @@ import { stripeProvider } from './stripe.provider.js';
       { name: StripeEvent.name, schema: StripeEventSchema },
     ]),
   ],
-  controllers: [PoliciesController],
+  controllers: [PoliciesController, PaymentsController],
   providers: [
     stripeProvider,
     PoliciesService,
+    PaymentsService,
     // TODO(Omar Hashem, Mohamed Hashad): remove once the real readers are bound.
     ...placeholderBookingPaymentReaders,
   ],
-  exports: [stripeProvider, MongooseModule, PoliciesService],
+  exports: [stripeProvider, MongooseModule, PoliciesService, PaymentsService],
 })
 export class PaymentsModule {}
