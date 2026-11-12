@@ -168,12 +168,14 @@ the chosen outbound/return pair and create the one payment/reference; search
 does not create a booking. Empty pages use items/meta and an empty-search message.
 
 Flight price filtering/sorting uses the displayed per-seated-passenger cabin
-fare; totalPrice is the party quote. The workbook does not specify a separate
-filter basis or display-currency conversion. Provider currencies are explicit;
-optional currency filters narrow to one currency and no FX rate is invented.
-Without that filter, min/max and price sorts currently compare raw numeric
-provider amounts across currencies. This is not an economic value comparison;
-the team must clarify the intended currency policy before changing it.
+fare; totalPrice is the party quote. PAY-04 requires a single platform currency:
+the shared PLATFORM_CURRENCY is EGP. Optional currency filters accept EGP only;
+default searches also enforce EGP, so no mixed-currency amounts are compared.
+New airline/hotel schemas reject foreign pricing currency. Legacy foreign-currency
+providers are excluded from search; direct flight price details and new cabin/
+baggage prices are rejected pending separately approved data review. No FX,
+relabelled amounts, automatic migration or currency rounding rule is introduced.
+See [the current PAY-04 integration plan](yassin-pay04-integration-plan.md).
 
 `GET /api/hotels/search` requires cityId and/or countryCode, checkInDate,
 checkOutDate and guests; rooms defaults to 1. Optional minPrice/maxPrice,
@@ -309,7 +311,10 @@ rounding to zero for valid small fares, post-commit dispatch errors, compatibili
 with flights predating inventoryRevision, and acceptance of unsafe pagination.
 Regression tests cover these cases. Full AppModule startup and Swagger JSON are
 also tested with environment-file loading disabled and a disposable local database.
-Final verification on November 11, 2026:
+Verification before this currency correction was completed on November 11, 2026.
+The current PAY-04 verification and integration status are recorded in
+[yassin-pay04-integration-plan.md](yassin-pay04-integration-plan.md).
+Historical verification:
 
 | Command | Result |
 | --- | --- |

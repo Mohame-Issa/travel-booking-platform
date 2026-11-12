@@ -8,7 +8,6 @@ import { Type } from 'class-transformer';
 import {
   Equals,
   IsEnum,
-  IsIn,
   IsInt,
   IsNotEmpty,
   IsMongoId,
@@ -17,7 +16,7 @@ import {
   Matches,
   Min,
 } from 'class-validator';
-import { SUPPORTED_CURRENCIES } from '../../common/constants/currencies.js';
+import { PLATFORM_CURRENCY } from '../../common/constants/currencies.js';
 import {
   PaginationMetaDto,
   PaginationQueryDto,
@@ -158,7 +157,7 @@ export class SearchFlightsQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({
     minimum: 0,
     description:
-      'Inclusive fare per seated passenger in provider currency; totalPrice is the party quote. Without currency, numeric amounts across provider currencies are compared without conversion; a common-currency policy is not defined.',
+      'Inclusive EGP fare per seated passenger (PAY-04); totalPrice is the party quote. No FX conversion.',
   })
   @Optional()
   @Type(() => Number)
@@ -172,12 +171,12 @@ export class SearchFlightsQueryDto extends PaginationQueryDto {
   @Min(0)
   maxPrice?: number;
   @ApiPropertyOptional({
-    enum: SUPPORTED_CURRENCIES,
+    enum: [PLATFORM_CURRENCY],
     description:
-      'Optional exact provider currency filter; use it for comparable price ordering/filtering. Without it, raw provider amounts are compared. No implicit FX conversion.',
+      'Optional; only the shared EGP platform currency is accepted (PAY-04). Results always use EGP.',
   })
   @Optional()
-  @IsIn(SUPPORTED_CURRENCIES)
+  @Equals(PLATFORM_CURRENCY)
   currency?: string;
   @ApiPropertyOptional({ enum: FlightSort, default: FlightSort.PRICE })
   @Optional()
