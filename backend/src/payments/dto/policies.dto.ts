@@ -32,7 +32,11 @@ export class CancellationTierDto {
   refundPercentage: number;
 }
 
-export class BaggagePolicyDto {
+/**
+ * Named differently from Yassin Shawr's airlines BaggagePolicyDto: Swagger
+ * needs unique schema names, otherwise one overwrites the other.
+ */
+export class PolicyBaggageSnapshotDto {
   @ApiProperty({ example: 1 }) freeBags: number;
   @ApiProperty({ example: 23 }) maxWeightKgPerBag: number;
   @ApiProperty({ example: 40, description: 'Price per extra bag' })
@@ -55,11 +59,11 @@ export class BookingPoliciesResponseDto {
   cancellationTiers: CancellationTierDto[];
 
   @ApiPropertyOptional({
-    type: BaggagePolicyDto,
+    type: PolicyBaggageSnapshotDto,
     nullable: true,
     description: 'Flights only',
   })
-  baggagePolicy: BaggagePolicyDto | null;
+  baggagePolicy: PolicyBaggageSnapshotDto | null;
 
   @ApiPropertyOptional({
     example: '14:00',

@@ -429,3 +429,23 @@ into common/interfaces (placeholders moved to common/placeholders, tokens
 added to AI_RULES.md section 8) and added PLATFORM_CURRENCY = 'EGP' (PAY-04),
 which payments now enforce. I reviewed the diff before merging.
 ================================================
+
+================================================
+Date: 2026-11-12
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02
+
+Prompt:
+Check the repo after my PR was merged and review how Omar Hashem's flight
+bookings use my payment contracts. Then fix the Swagger "Duplicate DTO
+BaggagePolicyDto" warning and make the webhook refuse to refund a payment
+whose booking is already Confirmed.
+
+How the output was used:
+Confirmed Omar's reader, confirm/release and refund calls match the shared
+contracts. Renamed my DTO to PolicyBaggageSnapshotDto and added a check in
+the webhook: when confirmBooking answers 409, the booking is read again and
+the late-payment refund only happens if it is not Confirmed. Verified with
+build, lint and unit tests (new test for the guard).
+================================================
