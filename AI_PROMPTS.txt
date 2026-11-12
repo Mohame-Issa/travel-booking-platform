@@ -429,3 +429,23 @@ into common/interfaces (placeholders moved to common/placeholders, tokens
 added to AI_RULES.md section 8) and added PLATFORM_CURRENCY = 'EGP' (PAY-04),
 which payments now enforce. I reviewed the diff before merging.
 ================================================
+
+================================================
+Date: 2026-11-12
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-03, FLT-09
+
+Prompt:
+Check the requirements sheet for how a 0% refund and "days remaining" must be
+handled, instead of asking the team, and fix my code to match.
+
+How the output was used:
+FLT-09 ("highest threshold not exceeding the days remaining", integer
+thresholds) already matches counting whole days, so no change. PAY-03 creates
+a refund only for a positive amount, so a 0% cancellation no longer creates a
+refund record: createRefund returns refundId null and status 'none'. This
+needed a small change to the shared RefundResult contract. Checked that Omar
+Hashem's unmerged flight-bookings branch still builds and passes its tests
+with the change.
+================================================

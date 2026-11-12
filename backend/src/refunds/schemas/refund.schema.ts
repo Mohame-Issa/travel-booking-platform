@@ -66,11 +66,14 @@ export class Refund {
   @Prop({ type: Number, default: null })
   appliedTierDaysBefore: number | null;
 
-  /** Refund amount in MINOR units. 0 if the policy gives no refund. */
+  /**
+   * Refund amount in MINOR units. Always > 0: PAY-03 creates a refund only
+   * for a positive amount (a 0% cancellation has no refund record).
+   */
   @Prop({
     type: Number,
     required: true,
-    min: 0,
+    min: 1,
     validate: {
       validator: Number.isInteger,
       message: 'amountMinor must be an integer',
@@ -94,7 +97,7 @@ export class Refund {
   })
   status: RefundStatus;
 
-  /** Stripe refund id ("re_..."). Absent when the amount is 0 (PAY-03). */
+  /** Stripe refund id ("re_..."). Absent if the Stripe call failed. */
   @Prop({ type: String })
   stripeRefundId?: string;
 
