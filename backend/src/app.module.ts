@@ -16,7 +16,9 @@ import { UsersModule } from './users/users.module.js';
 import { AirlinesModule } from './airlines/airlines.module.js';
 import { AirportsModule } from './airports/airports.module.js';
 import { FlightsModule } from './flights/flights.module.js';
+import { FlightBookingsModule } from './flight-bookings/flight-bookings.module.js';
 import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
+
 
 @Module({
   imports: [
@@ -49,6 +51,7 @@ import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
     AirlinesModule,
     AirportsModule,
     FlightsModule,
+    FlightBookingsModule,
     HotelsCatalogueModule,
   ],
   controllers: [HealthController],

@@ -24,9 +24,6 @@
  *   NOTIFICATION_SERVICE               Mohamed Hashad    logs a warning
  *   HOTEL_UPCOMING_BOOKINGS_CHECKER    Mohamed Hashad    returns false
  *   HOTEL_BOOKING_LIFECYCLE            Mohamed Hashad    throws 501
- *   FLIGHT_UPCOMING_BOOKINGS_CHECKER   Omar Hashem       returns false
- *   FLIGHT_BOOKING_LIFECYCLE           Omar Hashem       throws 501
- *   FLIGHT_BOOKING_PAYMENT_READER      Omar Hashem       throws 501
  *   HOTEL_BOOKING_PAYMENT_READER       Mohamed Hashad    throws 501
  */
 import { Global, HttpStatus, Injectable, Logger, Module } from '@nestjs/common';
@@ -124,32 +121,19 @@ function notMerged(token: string): ApiException {
   providers: [
     { provide: AUDIT_SERVICE, useClass: PlaceholderAuditService },
     { provide: NOTIFICATION_SERVICE, useClass: PlaceholderNotificationService },
-    {
-      provide: FLIGHT_UPCOMING_BOOKINGS_CHECKER,
-      useValue: new PlaceholderUpcomingBookingsChecker(
-        FLIGHT_UPCOMING_BOOKINGS_CHECKER,
-      ),
-    },
+    
     {
       provide: HOTEL_UPCOMING_BOOKINGS_CHECKER,
       useValue: new PlaceholderUpcomingBookingsChecker(
         HOTEL_UPCOMING_BOOKINGS_CHECKER,
       ),
     },
-    {
-      provide: FLIGHT_BOOKING_LIFECYCLE,
-      useValue: new PlaceholderBookingLifecycle(FLIGHT_BOOKING_LIFECYCLE),
-    },
+   
     {
       provide: HOTEL_BOOKING_LIFECYCLE,
       useValue: new PlaceholderBookingLifecycle(HOTEL_BOOKING_LIFECYCLE),
     },
-    {
-      provide: FLIGHT_BOOKING_PAYMENT_READER,
-      useValue: new PlaceholderBookingPaymentReader(
-        FLIGHT_BOOKING_PAYMENT_READER,
-      ),
-    },
+  
     {
       provide: HOTEL_BOOKING_PAYMENT_READER,
       useValue: new PlaceholderBookingPaymentReader(
@@ -160,11 +144,8 @@ function notMerged(token: string): ApiException {
   exports: [
     AUDIT_SERVICE,
     NOTIFICATION_SERVICE,
-    FLIGHT_UPCOMING_BOOKINGS_CHECKER,
     HOTEL_UPCOMING_BOOKINGS_CHECKER,
-    FLIGHT_BOOKING_LIFECYCLE,
     HOTEL_BOOKING_LIFECYCLE,
-    FLIGHT_BOOKING_PAYMENT_READER,
     HOTEL_BOOKING_PAYMENT_READER,
   ],
 })
