@@ -74,7 +74,8 @@ describe('Flight catalogue schemas (FLT-01/03/04/05/08/09/30)', () => {
       [Availability, 'bookingId'],
       [HotelPolicies, 'hotelId'],
     ] as const) {
-      expect(model.schema.path(field).instance).toBe('ObjectId');
+      const schemaPath = model.schema.paths[field];
+      expect(schemaPath?.instance).toBe('ObjectId');
     }
   });
   it('defaults providers to active, flights to Scheduled and cabin counts to zero', async () => {
