@@ -1,9 +1,4 @@
-
-import {
-  HttpStatus,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
@@ -22,13 +17,8 @@ import {
 
 import { Airline } from '../airlines/schemas/airline.schema.js';
 import { Hotel } from '../hotels/schemas/hotel.schema.js';
-import {
-  ModeratorAssignment,
-} from '../users/schemas/moderator-assignment.schema.js';
-import {
-  User,
-  UserDocument,
-} from '../users/schemas/user.schema.js';
+import { ModeratorAssignment } from '../users/schemas/moderator-assignment.schema.js';
+import { User, UserDocument } from '../users/schemas/user.schema.js';
 
 import { CreateModeratorDto } from './dto/create-moderator.dto.js';
 
@@ -53,6 +43,12 @@ export class AdminService {
     private readonly audit: AuditService,
   ) {}
 
+  /**
+   * ACC-13: name, email and a temporary password set by the admin; the
+   * moderator must change it on first login (mustChangePassword). The unique
+   * moderatorId index on ModeratorAssignment guarantees exactly one provider.
+   * The action is recorded through the audit service (GEN-07).
+   */
   async createModerator(
     adminId: string,
     dto: CreateModeratorDto,

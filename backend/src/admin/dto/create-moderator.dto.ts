@@ -1,7 +1,13 @@
-
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsEnum, IsMongoId, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsMongoId,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { ProviderType } from '../../common/constants/roles.js';
 import { IsValidPassword } from '../../auth/password.rules.js';
 

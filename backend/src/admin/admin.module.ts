@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { AirlinesModule } from '../airlines/airlines.module.js';
@@ -9,12 +8,7 @@ import { AdminController } from './admin.controller.js';
 import { AdminService } from './admin.service.js';
 
 @Module({
-  imports: [
-    AuthModule,
-    UsersModule,
-    AirlinesModule,
-    HotelsCatalogueModule,
-  ],
+  imports: [AuthModule, UsersModule, AirlinesModule, HotelsCatalogueModule],
   controllers: [AdminController],
   providers: [AdminService],
 })
