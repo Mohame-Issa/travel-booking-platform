@@ -1,3 +1,4 @@
+
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
@@ -221,6 +222,11 @@ export class AuthService {
       }
     }
     if (sessionId) await this.sessions.revoke(sessionId);
+  }
+
+  /** Revokes every active session for an account. Used by admin suspension. */
+  async revokeAllSessionsForUser(userId: string): Promise<void> {
+    await this.sessions.revokeAllForUser(userId);
   }
 
   /**

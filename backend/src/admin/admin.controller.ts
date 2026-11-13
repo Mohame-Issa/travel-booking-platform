@@ -5,6 +5,9 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseEnumPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -15,12 +18,13 @@ import {
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-import { UserRole } from '../common/constants/roles.js';
+import { ProviderType, UserRole } from '../common/constants/roles.js';
 import { CurrentUser, Roles } from '../common/decorators/auth.decorators.js';
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import {
@@ -111,5 +115,141 @@ export class AdminController {
       items: result.items.map(toPublicUser),
       meta: result.meta,
     };
+  }
+
+  /** ACC-15: Suspend a moderator account. */
+  @Patch('moderators/:id/suspend')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Suspend a moderator account' })
+  @ApiOkResponse({
+    description: 'Moderator account suspended successfully',
+    type: UserResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'Authentication required',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'Admin access required or account cannot be suspended',
+  })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'Moderator account not found',
+  })
+  async suspendModerator(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: { id: string },
+  ): Promise<UserResponseDto> {
+    const moderator = await this.adminService.suspendModerator(
+      currentUser.id,
+      id,
+    );
+
+    return toPublicUser(moderator);
+  }
+
+  /** ACC-15: Reactivate a suspended moderator account. */
+  @Patch('moderators/:id/reactivate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reactivate a suspended moderator account' })
+  @ApiOkResponse({
+    description: 'Moderator account reactivated successfully',
+    type: UserResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'Authentication required',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'Admin access required or account cannot be reactivated',
+  })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'Moderator account not found',
+  })
+  async reactivateModerator(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: { id: string },
+  ): Promise<UserResponseDto> {
+    const moderator = await this.adminService.reactivateModerator(
+      currentUser.id,
+      id,
+    );
+
+    return toPublicUser(moderator);
+  }
+
+  /** ACC-15: Deactivate an airline or hotel. */
+  @Patch('providers/:type/:id/deactivate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Deactivate an airline or hotel' })
+  @ApiOkResponse({
+    description: 'Provider deactivated successfully',
+  })
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description: 'Invalid provider type or ID',
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'Authentication required',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'Admin access required',
+  })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'Provider not found',
+  })
+  async deactivateProvider(
+    @Param('type', new ParseEnumPipe(ProviderType))
+    type: ProviderType,
+    @Param('id') id: string,
+    @CurrentUser() currentUser: { id: string },
+  ): Promise<unknown> {
+    return this.adminService.deactivateProvider(
+      currentUser.id,
+      type,
+      id,
+    );
+  }
+
+  /** ACC-15: Reactivate an airline or hotel. */
+  @Patch('providers/:type/:id/reactivate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reactivate an airline or hotel' })
+  @ApiOkResponse({
+    description: 'Provider reactivated successfully',
+  })
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description: 'Invalid provider type or ID',
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'Authentication required',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'Admin access required',
+  })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'Provider not found',
+  })
+  async reactivateProvider(
+    @Param('type', new ParseEnumPipe(ProviderType))
+    type: ProviderType,
+    @Param('id') id: string,
+    @CurrentUser() currentUser: { id: string },
+  ): Promise<unknown> {
+    return this.adminService.reactivateProvider(
+      currentUser.id,
+      type,
+      id,
+    );
   }
 }
