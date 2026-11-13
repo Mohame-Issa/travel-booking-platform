@@ -13,6 +13,7 @@ import { AirportsService } from '../airports/airports.service.js';
 import { Airline } from '../airlines/schemas/airline.schema.js';
 import { AirlinesService } from '../airlines/airlines.service.js';
 import { ProviderType } from '../common/constants/roles.js';
+import { PLATFORM_CURRENCY } from '../common/constants/currencies.js';
 import type { AuthenticatedUser } from '../common/types/authenticated-user.js';
 import { paginateArray } from '../common/utils/paginate.js';
 import { createValidationPipe } from '../common/pipes/validation.pipe.js';
@@ -355,7 +356,8 @@ export class FlightsService implements OnModuleInit, OnModuleDestroy {
     }
   }
   async createCabin(id: string, dto: CreateCabinDto, user: AuthenticatedUser) {
-    await this.managed(id, user);
+    const flight = await this.managed(id, user);
+    await this.airlines.assertCurrency(String(flight.airlineId));
     return this.flights.db.transaction(async (session) => {
       await this.touchScheduled(id, session);
       const [cabin] = await this.cabins.create(
@@ -371,7 +373,8 @@ export class FlightsService implements OnModuleInit, OnModuleDestroy {
     dto: UpdateCabinDto,
     user: AuthenticatedUser,
   ) {
-    await this.managed(id, user);
+    const flight = await this.managed(id, user);
+    await this.airlines.assertCurrency(String(flight.airlineId));
     if (!Object.keys(dto).length) invalid('Supply at least one cabin field');
     return this.flights.db.transaction(async (session) => {
       await this.touchScheduled(id, session);
@@ -408,7 +411,7 @@ export class FlightsService implements OnModuleInit, OnModuleDestroy {
     const flight = await this.flights.findById(id).lean().exec();
     if (!flight) throw new NotFoundException('Flight not found');
     const [airline, origin, destination, cabins, policy] = await Promise.all([
-      this.airlines.get(String(flight.airlineId)),
+      this.airlines.assertCurrency(String(flight.airlineId)),
       this.airports.get(flight.departureAirport),
       this.airports.get(flight.arrivalAirport),
       this.cabins
@@ -522,8 +525,8 @@ export class FlightsService implements OnModuleInit, OnModuleDestroy {
   ): Promise<FlightOptionResponseDto[]> {
     const airlineFilter: QueryFilter<Airline> = {
       status: ProviderStatus.ACTIVE,
+      currency: PLATFORM_CURRENCY, // PAY-04: never compare or relabel legacy foreign-currency fares.
     };
-    if (query.currency) airlineFilter.currency = query.currency;
     const airlines = await this.airlineModel.find(airlineFilter).lean().exec();
     const flightQuery = this.flights.find({
       airlineId: { $in: airlines.map((a) => a._id) },

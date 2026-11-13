@@ -68,6 +68,9 @@ export class RefundsService
   /**
    * Shared contract (common/interfaces/refund.interface.ts).
    * Idempotent: a second call for the same booking returns the first refund.
+   * PAY-03: a refund is issued and recorded only for a POSITIVE amount. If the
+   * policy gives 0%, nothing is saved and { refundId: null, status: 'none' }
+   * is returned.
    */
   async createRefund(input: CreateRefundInput): Promise<RefundResult> {
     const existing = await this.findByBooking(
@@ -81,6 +84,14 @@ export class RefundsService
       input.bookingId,
     );
     const calc = await this.calculate(input, payment);
+    if (calc.amountMinor === 0) {
+      return {
+        refundId: null,
+        amount: 0,
+        currency: payment.currency,
+        status: 'none',
+      };
+    }
 
     const { refund, created } = await this.insertRefund(payment, {
       reason: input.reason,
@@ -249,8 +260,7 @@ export class RefundsService
         bookingType: payment.bookingType,
         bookingId: payment.bookingId,
         currency: payment.currency,
-        // PAY-03: Stripe is only called for a positive amount. 0 = nothing to refund.
-        status: fields.amountMinor > 0 ? 'pending' : 'succeeded',
+        status: 'pending', // until Stripe answers
         ...fields,
       });
       return { refund: created, created: true };
@@ -275,8 +285,6 @@ export class RefundsService
     refund: RefundDocument,
     payment: PaymentDocument,
   ): Promise<RefundDocument> {
-    if (refund.amountMinor === 0) return refund;
-
     if (!this.stripe) {
       refund.status = 'failed';
       await refund.save();

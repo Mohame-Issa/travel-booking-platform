@@ -1,5 +1,10 @@
 # Yassin follow-up issue report — November 11, 2026
 
+> Currency correction, November 13: PAY-04 explicitly requires one platform currency;
+> latest develop defines EGP. The historical mixed-currency interpretation below is
+> superseded by [the PAY-04 correction and integration plan](yassin-pay04-integration-plan.md).
+> Current catalogue validation/search is EGP-only, with no FX or legacy price relabelling.
+
 Scope: the current `feature/GEN-12-shared-schemas-seeding` working tree in
 `D:\Projects\travel-booking-platform`. Existing uncommitted work was preserved.
 Rules were checked against the official Mandatory workbook, the work split,

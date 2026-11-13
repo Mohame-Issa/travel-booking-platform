@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import type { HydratedDocument } from 'mongoose';
 import { ProviderStatus } from '../../flights/catalogue.constants.js';
-import { SUPPORTED_CURRENCIES } from '../../common/constants/currencies.js';
+import { PLATFORM_CURRENCY } from '../../common/constants/currencies.js';
 
 @Schema({ collection: 'hotels', timestamps: true })
 export class Hotel {
@@ -26,7 +26,8 @@ export class Hotel {
   @Prop({ required: true, min: 1, max: 5, validate: Number.isInteger })
   starClass: number;
   @Prop({ type: [String], default: [] }) amenities: string[];
-  @Prop({ required: true, uppercase: true, enum: SUPPORTED_CURRENCIES })
+  // PAY-04: Room.pricePerNight is denominated in this platform currency.
+  @Prop({ required: true, uppercase: true, enum: [PLATFORM_CURRENCY] })
   currency: string;
   @Prop({
     type: String,
