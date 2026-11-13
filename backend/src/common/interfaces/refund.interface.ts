@@ -24,12 +24,20 @@ export interface CreateRefundInput {
 
 export type RefundStatus = 'pending' | 'succeeded' | 'failed';
 
+/**
+ * Status returned by createRefund(). 'none' = the policy gives 0%, so no
+ * refund is issued or recorded (PAY-03: only cancellations with a POSITIVE
+ * refund amount get a refund).
+ */
+export type RefundResultStatus = RefundStatus | 'none';
+
 export interface RefundResult {
-  refundId: string;
-  /** Amount refunded in the booking currency. 0 if the policy gives no refund. */
+  /** null when no refund is due (status 'none'). */
+  refundId: string | null;
+  /** Amount refunded in the booking currency. 0 when status is 'none'. */
   amount: number;
   currency: string;
-  status: RefundStatus;
+  status: RefundResultStatus;
 }
 
 export interface RefundService {

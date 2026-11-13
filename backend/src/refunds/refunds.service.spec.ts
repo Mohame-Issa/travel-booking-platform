@@ -121,16 +121,18 @@ describe('RefundsService.createRefund (PAY-03)', () => {
     expect(policies.assertAccepted).not.toHaveBeenCalled();
   });
 
-  it('0% refund: recorded, but no Stripe call and no notification (PAY-03: positive amounts only)', async () => {
+  it('0% refund: nothing recorded, no Stripe call, no notification (PAY-03: positive amounts only)', async () => {
     const { service, stripe, notifications, refundModel } = setup({
       daysAhead: 2,
     });
     const res = await service.createRefund(userCancel);
-    expect(res.amount).toBe(0);
-    expect(refundModel.create.mock.calls[0][0]).toMatchObject({
-      amountMinor: 0,
-      refundPercentage: 0,
+    expect(res).toEqual({
+      refundId: null,
+      amount: 0,
+      currency: 'USD',
+      status: 'none',
     });
+    expect(refundModel.create).not.toHaveBeenCalled();
     expect(stripe.refunds.create).not.toHaveBeenCalled();
     expect(notifications.notify).not.toHaveBeenCalled();
   });

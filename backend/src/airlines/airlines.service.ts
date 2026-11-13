@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ProviderType } from '../common/constants/roles.js';
+import { PLATFORM_CURRENCY } from '../common/constants/currencies.js';
 import type { AuthenticatedUser } from '../common/types/authenticated-user.js';
 import { ProviderStatus } from '../flights/catalogue.constants.js';
 import { conflict, invalid } from '../flights/catalogue-validation.js';
@@ -29,6 +30,11 @@ export class AirlinesService {
     @Inject(AIRLINE_LOGO_RESOLVER) private readonly logos: AirlineLogoResolver,
   ) {}
   create(dto: CreateAirlineDto) {
+    if (dto.currency !== PLATFORM_CURRENCY)
+      invalid(
+        `Airline currency must be ${PLATFORM_CURRENCY} (PAY-04)`,
+        'currency',
+      );
     return this.airlines.create(dto);
   }
   async get(id: string) {
@@ -37,9 +43,18 @@ export class AirlinesService {
     return airline;
   }
   async assertActive(id: string) {
-    const airline = await this.get(id);
+    const airline = await this.assertCurrency(id);
     if (airline.status !== ProviderStatus.ACTIVE)
       conflict('Airline is deactivated');
+    return airline;
+  }
+  async assertCurrency(id: string) {
+    const airline = await this.get(id);
+    if (airline.currency !== PLATFORM_CURRENCY)
+      invalid(
+        `Legacy provider currency requires review; catalogue prices must use ${PLATFORM_CURRENCY} (PAY-04)`,
+        'currency',
+      );
     return airline;
   }
   async update(id: string, dto: UpdateAirlineDto, user: AuthenticatedUser) {
@@ -66,7 +81,7 @@ export class AirlinesService {
   }
   async setBaggage(id: string, dto: BaggagePolicyDto, user: AuthenticatedUser) {
     await this.assignments.assertCanManage(user, ProviderType.AIRLINE, id);
-    await this.get(id);
+    await this.assertCurrency(id);
     return this.policies
       .findOneAndUpdate(
         { airlineId: id },

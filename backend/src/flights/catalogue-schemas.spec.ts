@@ -1,4 +1,10 @@
 import { createConnection, Types } from 'mongoose';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { PLATFORM_CURRENCY } from '../common/constants/currencies.js';
+import { CreateAirlineDto } from '../airlines/dto/airline.dto.js';
+import { SearchFlightsQueryDto } from './dto/flight.dto.js';
+import { SearchHotelsQueryDto } from '../hotels/dto/search-hotels.dto.js';
 import { Airline, AirlineSchema } from '../airlines/schemas/airline.schema.js';
 import {
   AirlinePolicy,
@@ -63,6 +69,72 @@ const validCabin = {
   maxBagWeightKg: 23,
 };
 
+describe('PAY-04 platform currency validation', () => {
+  const airline = {
+    name: 'Currency test',
+    code: 'CT',
+    currency: PLATFORM_CURRENCY,
+  };
+  const hotel = {
+    name: 'Currency test',
+    address: 'Test',
+    cityId: 'cairo',
+    countryCode: 'EG',
+    starClass: 3,
+    currency: PLATFORM_CURRENCY,
+  };
+  const flightQuery = {
+    departureAirport: 'CAI',
+    arrivalAirport: 'DXB',
+    departureDate: '2099-12-01',
+  };
+  const hotelQuery = {
+    cityId: 'cairo',
+    checkInDate: '2099-12-01',
+    checkOutDate: '2099-12-03',
+    guests: 1,
+  };
+  it('accepts EGP provider records and omitted/explicit EGP search currency', async () => {
+    await new Airlines(airline).validate();
+    await new Hotels(hotel).validate();
+    expect(
+      validateSync(plainToInstance(CreateAirlineDto, airline)),
+    ).toHaveLength(0);
+    for (const currency of [undefined, PLATFORM_CURRENCY]) {
+      expect(
+        validateSync(
+          plainToInstance(SearchFlightsQueryDto, { ...flightQuery, currency }),
+        ),
+      ).toHaveLength(0);
+      expect(
+        validateSync(
+          plainToInstance(SearchHotelsQueryDto, { ...hotelQuery, currency }),
+        ),
+      ).toHaveLength(0);
+    }
+  });
+  it.each(['USD', 'EUR', 'GBP', 'AED', 'JPY', 'SAR'])(
+    'rejects %s in provider schemas and catalogue DTOs',
+    async (currency) => {
+      await expect(
+        new Airlines({ ...airline, currency }).validate(),
+      ).rejects.toThrow();
+      await expect(
+        new Hotels({ ...hotel, currency }).validate(),
+      ).rejects.toThrow();
+      for (const dto of [
+        plainToInstance(CreateAirlineDto, { ...airline, currency }),
+        plainToInstance(SearchFlightsQueryDto, { ...flightQuery, currency }),
+        plainToInstance(SearchHotelsQueryDto, { ...hotelQuery, currency }),
+      ]) {
+        expect(
+          validateSync(dto).some((error) => error.property === 'currency'),
+        ).toBe(true);
+      }
+    },
+  );
+});
+
 describe('Flight catalogue schemas (FLT-01/03/04/05/08/09/30)', () => {
   it('uses real ObjectId schema paths rather than Mixed references', () => {
     for (const [model, field] of [
@@ -74,7 +146,8 @@ describe('Flight catalogue schemas (FLT-01/03/04/05/08/09/30)', () => {
       [Availability, 'bookingId'],
       [HotelPolicies, 'hotelId'],
     ] as const) {
-      expect(model.schema.path(field).instance).toBe('ObjectId');
+      const schemaPath = model.schema.paths[field];
+      expect(schemaPath?.instance).toBe('ObjectId');
     }
   });
   it('defaults providers to active, flights to Scheduled and cabin counts to zero', async () => {

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { PLATFORM_CURRENCY } from '../common/constants/currencies.js';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, type QueryFilter } from 'mongoose';
 import { paginateArray } from '../common/utils/paginate.js';
@@ -65,10 +66,12 @@ export class HotelsSearchService {
       invalid('Check-in date cannot be in the past', 'checkInDate');
     if (end <= start)
       invalid('Check-out must be after check-in', 'checkOutDate');
-    const filter: QueryFilter<Hotel> = { status: ProviderStatus.ACTIVE };
+    const filter: QueryFilter<Hotel> = {
+      status: ProviderStatus.ACTIVE,
+      currency: PLATFORM_CURRENCY,
+    }; // PAY-04
     if (query.cityId) filter.cityId = query.cityId;
     if (query.countryCode) filter.countryCode = query.countryCode;
-    if (query.currency) filter.currency = query.currency;
     if (query.minRating !== undefined)
       filter.averageRating = { $gte: query.minRating }; // HTL-12: null/unrated excluded.
     const hotels = await this.hotels.find(filter).lean().exec();

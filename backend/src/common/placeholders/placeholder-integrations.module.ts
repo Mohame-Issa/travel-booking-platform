@@ -20,63 +20,19 @@
  *      so do not leave both.
  *
  *   Token                              Owner             Placeholder behaviour
- *   AUDIT_SERVICE                      Mohamed Hashad    logs a warning
- *   NOTIFICATION_SERVICE               Mohamed Hashad    logs a warning
- *   HOTEL_UPCOMING_BOOKINGS_CHECKER    Mohamed Hashad    returns false
- *   HOTEL_BOOKING_LIFECYCLE            Mohamed Hashad    throws 501
- *   HOTEL_BOOKING_PAYMENT_READER       Mohamed Hashad    throws 501
+
  */
-import { Global, HttpStatus, Injectable, Logger, Module } from '@nestjs/common';
+import { Global, HttpStatus, Logger, Module } from '@nestjs/common';
 import { ErrorCode } from '../constants/error-codes.js';
 import { ApiException } from '../exceptions/api.exception.js';
 import {
-  AUDIT_SERVICE,
-  AuditLogInput,
-  AuditService,
   BookingLifecycleService,
   BookingPaymentReader,
   BookingPaymentSnapshot,
-  FLIGHT_BOOKING_PAYMENT_READER,
-  FLIGHT_BOOKING_LIFECYCLE,
-  FLIGHT_UPCOMING_BOOKINGS_CHECKER,
-  HOTEL_BOOKING_LIFECYCLE,
-  HOTEL_BOOKING_PAYMENT_READER,
-  HOTEL_UPCOMING_BOOKINGS_CHECKER,
-  NOTIFICATION_SERVICE,
-  NotificationService,
-  NotifyInput,
   UpcomingConfirmedBookingsChecker,
 } from '../interfaces/index.js';
 
 const logger = new Logger('TEMPORARY-PLACEHOLDER');
-
-/** TEMPORARY: replaced by Mohamed Hashad's AuditService. */
-@Injectable()
-class PlaceholderAuditService implements AuditService {
-  async record(input: AuditLogInput): Promise<void> {
-    logger.warn(
-      `AUDIT_SERVICE not merged yet - audit entry NOT saved: ${input.action} on ${input.targetType} ${input.targetId ?? ''}`,
-    );
-  }
-}
-
-/** TEMPORARY: replaced by Mohamed Hashad's NotificationService. */
-@Injectable()
-class PlaceholderNotificationService implements NotificationService {
-  async notify(input: NotifyInput): Promise<void> {
-    logger.warn(
-      `NOTIFICATION_SERVICE not merged yet - notification NOT saved: ${input.type}`,
-    );
-  }
-  async notifyMany(
-    userIds: string[],
-    input: Omit<NotifyInput, 'userId'>,
-  ): Promise<void> {
-    logger.warn(
-      `NOTIFICATION_SERVICE not merged yet - ${userIds.length} notifications NOT saved: ${input.type}`,
-    );
-  }
-}
 
 /** TEMPORARY: replaced by the flight and hotel booking modules. */
 class PlaceholderUpcomingBookingsChecker implements UpcomingConfirmedBookingsChecker {
@@ -119,34 +75,11 @@ function notMerged(token: string): ApiException {
 @Global()
 @Module({
   providers: [
-    { provide: AUDIT_SERVICE, useClass: PlaceholderAuditService },
-    { provide: NOTIFICATION_SERVICE, useClass: PlaceholderNotificationService },
     
-    {
-      provide: HOTEL_UPCOMING_BOOKINGS_CHECKER,
-      useValue: new PlaceholderUpcomingBookingsChecker(
-        HOTEL_UPCOMING_BOOKINGS_CHECKER,
-      ),
-    },
-   
-    {
-      provide: HOTEL_BOOKING_LIFECYCLE,
-      useValue: new PlaceholderBookingLifecycle(HOTEL_BOOKING_LIFECYCLE),
-    },
-  
-    {
-      provide: HOTEL_BOOKING_PAYMENT_READER,
-      useValue: new PlaceholderBookingPaymentReader(
-        HOTEL_BOOKING_PAYMENT_READER,
-      ),
-    },
+
   ],
   exports: [
-    AUDIT_SERVICE,
-    NOTIFICATION_SERVICE,
-    HOTEL_UPCOMING_BOOKINGS_CHECKER,
-    HOTEL_BOOKING_LIFECYCLE,
-    HOTEL_BOOKING_PAYMENT_READER,
+    
   ],
 })
 export class PlaceholderIntegrationsModule {}
