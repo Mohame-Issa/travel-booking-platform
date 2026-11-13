@@ -8,7 +8,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayUnique,
   IsArray,
-  IsIn,
+  Equals,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -18,7 +18,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { SUPPORTED_CURRENCIES } from '../../common/constants/currencies.js';
+import { PLATFORM_CURRENCY } from '../../common/constants/currencies.js';
 import { Optional } from '../../flights/catalogue-validation.js';
 
 export class CreateAirlineDto {
@@ -31,8 +31,12 @@ export class CreateAirlineDto {
   @IsString()
   @IsNotEmpty()
   code: string;
-  @ApiProperty({ enum: SUPPORTED_CURRENCIES, example: 'EGP' })
-  @IsIn(SUPPORTED_CURRENCIES)
+  @ApiProperty({
+    enum: [PLATFORM_CURRENCY],
+    example: PLATFORM_CURRENCY,
+    description: 'PAY-04: all catalogue prices use the platform currency.',
+  })
+  @Equals(PLATFORM_CURRENCY)
   currency: string;
 }
 export class UpdateAirlineDto extends PartialType(

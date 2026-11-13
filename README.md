@@ -9,6 +9,12 @@ Software Project I, Winter 2026. NestJS backend, MongoDB Atlas, Swagger UI
 
 ## Flights, search and reference data
 
+PAY-04 catalogue prices use the shared EGP `PLATFORM_CURRENCY`. Airline/hotel schemas
+and currency filters reject other currencies; search excludes legacy non-EGP providers
+without changing their records or converting amounts. Country reference currencies and
+itinerary display preferences remain separate. See the
+[currency correction and remaining integration plan](docs/yassin-pay04-integration-plan.md).
+
 Yassin's airline, airport, flight/cabin and hotel-search modules are registered
 in the backend. All 14 assigned endpoints have Swagger request/response/error
 documentation at `/api/docs`. See [the implementation and handoff guide](docs/yassin-implementation.md)

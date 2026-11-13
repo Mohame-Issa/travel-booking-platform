@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
-  IsIn,
+  Equals,
   IsInt,
   IsNumber,
   IsString,
@@ -11,7 +11,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { SUPPORTED_CURRENCIES } from '../../common/constants/currencies.js';
+import { PLATFORM_CURRENCY } from '../../common/constants/currencies.js';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto.js';
 import { IsDateOnly, Optional } from '../../flights/catalogue-validation.js';
 import { SortOrder } from '../../flights/dto/flight.dto.js';
@@ -56,7 +56,7 @@ export class SearchHotelsQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({
     minimum: 0,
     description:
-      'Inclusive cheapest qualifying room price per night in hotel currency. Without currency, raw numeric provider amounts are compared without conversion.',
+      'Inclusive cheapest qualifying room price per night in EGP (PAY-04). No FX conversion.',
   })
   @Optional()
   @Type(() => Number)
@@ -77,12 +77,12 @@ export class SearchHotelsQueryDto extends PaginationQueryDto {
   @Max(5)
   minRating?: number;
   @ApiPropertyOptional({
-    enum: SUPPORTED_CURRENCIES,
+    enum: [PLATFORM_CURRENCY],
     description:
-      'Exact hotel currency filter; use it for comparable price ordering/filtering. No implicit FX conversion.',
+      'Optional; only the shared EGP platform currency is accepted (PAY-04). Results always use EGP.',
   })
   @Optional()
-  @IsIn(SUPPORTED_CURRENCIES)
+  @Equals(PLATFORM_CURRENCY)
   currency?: string;
   @ApiPropertyOptional({ enum: HotelSort, default: HotelSort.PRICE })
   @Optional()

@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import type { HydratedDocument } from 'mongoose';
 import { ProviderStatus } from '../../flights/catalogue.constants.js';
-import { SUPPORTED_CURRENCIES } from '../../common/constants/currencies.js';
+import { PLATFORM_CURRENCY } from '../../common/constants/currencies.js';
 
 @Schema({ collection: 'airlines', timestamps: true })
 export class Airline {
@@ -13,7 +13,8 @@ export class Airline {
   code: string;
   // GEN-08: URL returned by the shared upload service; never binary data.
   @Prop({ type: String, default: null }) logoUrl: string | null;
-  @Prop({ required: true, uppercase: true, enum: SUPPORTED_CURRENCIES })
+  // PAY-04: country/display currencies do not determine provider pricing currency.
+  @Prop({ required: true, uppercase: true, enum: [PLATFORM_CURRENCY] })
   currency: string;
   @Prop({
     type: String,

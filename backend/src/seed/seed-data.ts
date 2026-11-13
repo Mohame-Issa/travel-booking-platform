@@ -1,4 +1,5 @@
 import { hash } from 'bcryptjs';
+import { PLATFORM_CURRENCY } from '../common/constants/currencies.js';
 import type { Connection } from 'mongoose';
 import { Airline, AirlineSchema } from '../airlines/schemas/airline.schema.js';
 import { Airport, AirportSchema } from '../airports/schemas/airport.schema.js';
@@ -173,7 +174,7 @@ export async function seedData(
               seedKey: 'yassin-demo-airline',
               name: 'Yassin Demo Air',
               code: 'YS',
-              currency: 'EGP',
+              currency: PLATFORM_CURRENCY,
             },
           },
           {
@@ -196,7 +197,7 @@ export async function seedData(
               countryCode: 'EG',
               description: 'Test provider for moderator integration',
               starClass: 3,
-              currency: 'EGP',
+              currency: PLATFORM_CURRENCY,
             },
           },
           {
