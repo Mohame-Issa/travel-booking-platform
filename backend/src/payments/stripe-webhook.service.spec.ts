@@ -78,6 +78,9 @@ function setup(paymentOver: Record<string, unknown> | null = {}) {
   };
   const payments = { stripe: () => stripe };
   const config = { get: () => SECRET };
+  const policies = {
+    getBooking: vi.fn().mockResolvedValue({ status: 'Expired' }),
+  };
   const refunds = {
     refundLatePayment: vi.fn().mockResolvedValue(undefined),
     onStripeRefundUpdated: vi.fn().mockResolvedValue(undefined),
@@ -88,10 +91,19 @@ function setup(paymentOver: Record<string, unknown> | null = {}) {
     flights,
     hotels,
     payments as never,
+    policies as never,
     config as never,
     refunds,
   );
-  return { service, paymentModel, eventModel, flights, hotels, refunds };
+  return {
+    service,
+    paymentModel,
+    eventModel,
+    flights,
+    hotels,
+    refunds,
+    policies,
+  };
 }
 
 describe('StripeWebhookService (PAY-01)', () => {
@@ -176,6 +188,17 @@ describe('StripeWebhookService (PAY-01)', () => {
     const { body, header } = signed('payment_intent.succeeded', intent());
     expect(await service.handle(body, header)).toEqual({ received: true });
     expect(refunds.refundLatePayment).toHaveBeenCalledWith('pay_1');
+  });
+
+  it('does NOT refund on 409 if the booking is already Confirmed', async () => {
+    const { service, flights, refunds, policies } = setup();
+    flights.confirmBooking.mockRejectedValue(
+      new ApiException(HttpStatus.CONFLICT, ErrorCode.CONFLICT, 'Wrong status'),
+    );
+    policies.getBooking.mockResolvedValue({ status: 'Confirmed' });
+    const { body, header } = signed('payment_intent.succeeded', intent());
+    expect(await service.handle(body, header)).toEqual({ received: true });
+    expect(refunds.refundLatePayment).not.toHaveBeenCalled();
   });
 
   it('refund.updated is passed to the refunds module (PAY-03 status)', async () => {

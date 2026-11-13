@@ -448,4 +448,18 @@ refund record: createRefund returns refundId null and status 'none'. This
 needed a small change to the shared RefundResult contract. Checked that Omar
 Hashem's unmerged flight-bookings branch still builds and passes its tests
 with the change.
+Related Requirement: PAY-01, PAY-02
+
+Prompt:
+Check the repo after my PR was merged and review how Omar Hashem's flight
+bookings use my payment contracts. Then fix the Swagger "Duplicate DTO
+BaggagePolicyDto" warning and make the webhook refuse to refund a payment
+whose booking is already Confirmed.
+
+How the output was used:
+Confirmed Omar's reader, confirm/release and refund calls match the shared
+contracts. Renamed my DTO to PolicyBaggageSnapshotDto and added a check in
+the webhook: when confirmBooking answers 409, the booking is read again and
+the late-payment refund only happens if it is not Confirmed. Verified with
+build, lint and unit tests (new test for the guard).
 ================================================

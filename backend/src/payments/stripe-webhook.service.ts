@@ -16,9 +16,11 @@ import {
   type BookingType,
   FLIGHT_BOOKING_LIFECYCLE,
   HOTEL_BOOKING_LIFECYCLE,
+  BookingStatus,
 } from '../common/interfaces/index.js';
 import { PaymentStatus } from './payments.constants.js';
 import { PaymentsService } from './payments.service.js';
+import { PoliciesService } from './policies.service.js';
 import { REFUND_HOOKS, type RefundHooks } from './refund-hooks.js';
 import { Payment, type PaymentDocument } from './schemas/payment.schema.js';
 import { StripeEvent } from './schemas/stripe-event.schema.js';
@@ -51,6 +53,7 @@ export class StripeWebhookService {
     @Inject(HOTEL_BOOKING_LIFECYCLE)
     private readonly hotels: BookingLifecycleService,
     private readonly payments: PaymentsService,
+    private readonly policies: PoliciesService,
     private readonly config: ConfigService,
     @Inject(REFUND_HOOKS) private readonly refunds: RefundHooks,
   ) {}
@@ -190,6 +193,20 @@ export class StripeWebhookService {
         err instanceof HttpException &&
         err.getStatus() === HttpStatus.CONFLICT
       ) {
+        // Before giving the money back, make sure the booking is really NOT
+        // Confirmed. A booking has only one payment (unique index), so if it
+        // is Confirmed, it was confirmed by THIS payment and must not be
+        // refunded (the 409 then came from a non-idempotent retry).
+        const booking = await this.policies.getBooking(
+          payment.bookingType,
+          payment.bookingId.toString(),
+        );
+        if (booking?.status === BookingStatus.CONFIRMED) {
+          this.logger.warn(
+            `confirmBooking answered 409 for payment ${payment.id}, but the booking is already Confirmed; no refund`,
+          );
+          return;
+        }
         // The booking can no longer be confirmed (e.g. it just expired),
         // so the money goes back in full.
         this.logger.warn(
