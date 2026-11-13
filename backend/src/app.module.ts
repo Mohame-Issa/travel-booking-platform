@@ -9,6 +9,7 @@ import { AuditModule } from './audit/audit.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { UploadsModule } from './uploads/uploads.module.js';
 import { HotelBookingsModule } from './hotel-bookings/hotel-bookings.module.js';
+import { HotelBookingCancellationModule } from './hotel-bookings/cancellation/hotel-booking-cancellation.module.js';
 import { HotelsModule } from './hotels/hotels.module.js';
 import { AuthGuard } from './auth/guards/auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
@@ -58,6 +59,7 @@ import { AdminModule } from './admin/admin.module.js';
     AirportsModule,
     FlightsModule,
     FlightBookingsModule,
+    HotelBookingCancellationModule,
     HotelsCatalogueModule,
     AuditModule,
     NotificationsModule,
