@@ -1,9 +1,14 @@
+
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { AuthService } from '../auth/auth.service.js';
 import { ErrorCode } from '../common/constants/error-codes.js';
+import { PAGE_SIZE } from '../common/constants/pagination.js';
+import {
+  Paginated,
+} from '../common/dto/pagination.dto.js';
 import {
   MODERATOR_ROLE_FOR_PROVIDER,
   ProviderType,
@@ -21,6 +26,7 @@ import { ModeratorAssignment } from '../users/schemas/moderator-assignment.schem
 import { User, UserDocument } from '../users/schemas/user.schema.js';
 
 import { CreateModeratorDto } from './dto/create-moderator.dto.js';
+import { ListAccountsQueryDto } from './dto/list-accounts-query.dto.js';
 
 @Injectable()
 export class AdminService {
@@ -42,6 +48,60 @@ export class AdminService {
     @Inject(AUDIT_SERVICE)
     private readonly audit: AuditService,
   ) {}
+
+  /**
+   * ACC-14: List all accounts with pagination, search and filters.
+   */
+  async listAccounts(
+    query: ListAccountsQueryDto,
+  ): Promise<Paginated<UserDocument>> {
+    const { page = 1, search, role, status } = query;
+
+    const filter: Record<string, unknown> = {};
+
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      filter.$or = [
+        { name: { $regex: escapedSearch, $options: 'i' } },
+        { email: { $regex: escapedSearch, $options: 'i' } },
+      ];
+    }
+
+    if (role) {
+      filter.role = role;
+    }
+
+    if (status) {
+      filter.status = status;
+    }
+
+    const skip = (page - 1) * PAGE_SIZE;
+
+    const [accounts, totalItems] = await Promise.all([
+      this.userModel
+        .find(filter)
+        .select(
+          'name email role status phone preferredCurrency mustChangePassword createdAt',
+        )
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(PAGE_SIZE)
+        .exec(),
+
+      this.userModel.countDocuments(filter).exec(),
+    ]);
+
+    return {
+      items: accounts,
+      meta: {
+        page,
+        pageSize: PAGE_SIZE,
+        totalItems,
+        totalPages: Math.ceil(totalItems / PAGE_SIZE),
+      },
+    };
+  }
 
   /**
    * ACC-13: name, email and a temporary password set by the admin; the
