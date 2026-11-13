@@ -23,7 +23,7 @@ import { AirlinesModule } from './airlines/airlines.module.js';
 import { AirportsModule } from './airports/airports.module.js';
 import { FlightsModule } from './flights/flights.module.js';
 import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
-
+import { AdminModule } from './admin/admin.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
@@ -49,6 +49,7 @@ import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
     UsersModule,
     AuthModule,
     AccountsModule,
+    AdminModule,
     // Feature modules are added below this line, one per teammate PR.
     PaymentsModule,
     RefundsModule,
