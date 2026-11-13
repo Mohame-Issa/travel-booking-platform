@@ -4,6 +4,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { Connection } from 'mongoose';
 import { AuthModule } from './auth/auth.module.js';
+// Mohamed Hashad: shared services (GEN-01/07/08); kept apart from other PRs' import lines
+import { AuditModule } from './audit/audit.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { UploadsModule } from './uploads/uploads.module.js';
+import { HotelBookingsModule } from './hotel-bookings/hotel-bookings.module.js';
+import { HotelsModule } from './hotels/hotels.module.js';
 import { AuthGuard } from './auth/guards/auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
 import { PlaceholderIntegrationsModule } from './common/placeholders/placeholder-integrations.module.js';
@@ -50,6 +56,11 @@ import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
     AirportsModule,
     FlightsModule,
     HotelsCatalogueModule,
+    AuditModule,
+    NotificationsModule,
+    UploadsModule,
+    HotelBookingsModule,
+    HotelsModule,
   ],
   controllers: [HealthController],
   providers: [
