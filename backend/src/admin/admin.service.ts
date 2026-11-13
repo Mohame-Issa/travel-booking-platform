@@ -6,12 +6,11 @@ import { Model } from 'mongoose';
 import { AuthService } from '../auth/auth.service.js';
 import { ErrorCode } from '../common/constants/error-codes.js';
 import { PAGE_SIZE } from '../common/constants/pagination.js';
-import {
-  Paginated,
-} from '../common/dto/pagination.dto.js';
+import { Paginated } from '../common/dto/pagination.dto.js';
 import {
   MODERATOR_ROLE_FOR_PROVIDER,
   ProviderType,
+  UserRole,
   UserStatus,
 } from '../common/constants/roles.js';
 import { ApiException } from '../common/exceptions/api.exception.js';
@@ -19,6 +18,10 @@ import {
   AUDIT_SERVICE,
   type AuditService,
 } from '../common/interfaces/audit.interface.js';
+import {
+  NOTIFICATION_SERVICE,
+  type NotificationService,
+} from '../common/interfaces/notification.interface.js';
 
 import { Airline } from '../airlines/schemas/airline.schema.js';
 import { Hotel } from '../hotels/schemas/hotel.schema.js';
@@ -47,6 +50,9 @@ export class AdminService {
 
     @Inject(AUDIT_SERVICE)
     private readonly audit: AuditService,
+
+    @Inject(NOTIFICATION_SERVICE)
+    private readonly notifications: NotificationService,
   ) {}
 
   /**
@@ -104,10 +110,7 @@ export class AdminService {
   }
 
   /**
-   * ACC-13: name, email and a temporary password set by the admin; the
-   * moderator must change it on first login (mustChangePassword). The unique
-   * moderatorId index on ModeratorAssignment guarantees exactly one provider.
-   * The action is recorded through the audit service (GEN-07).
+   * ACC-13: Create a moderator and assign exactly one provider.
    */
   async createModerator(
     adminId: string,
@@ -164,6 +167,7 @@ export class AdminService {
           'An account with this email address already exists',
         );
       }
+
       throw error;
     }
 
@@ -174,8 +178,7 @@ export class AdminService {
         providerId: dto.providerId,
         assignedBy: adminId,
       });
-    } catch (error: unknown) {
-      // Roll back the moderator if the assignment cannot be created.
+    } catch (error) {
       await this.userModel.deleteOne({ _id: moderator._id }).exec();
       throw error;
     }
@@ -192,5 +195,110 @@ export class AdminService {
     });
 
     return moderator;
+  }
+
+  /**
+   * ACC-16: Suspend a registered user.
+   */
+  async suspendUser(
+    adminId: string,
+    userId: string,
+  ): Promise<UserDocument> {
+    const user = await this.findRegisteredUser(userId);
+
+    if (user.status === UserStatus.DEACTIVATED) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.ACCOUNT_DEACTIVATED,
+        'This account has been deactivated',
+      );
+    }
+
+    if (user.status === UserStatus.SUSPENDED) {
+      return user;
+    }
+
+    user.status = UserStatus.SUSPENDED;
+    await user.save();
+
+    await this.auth.revokeAllSessionsForUser(userId);
+
+    await this.audit.record({
+      actorId: adminId,
+      action: 'user.suspended',
+      targetType: 'User',
+      targetId: userId,
+    });
+
+    await this.notifications.notify({
+      userId,
+      type: 'account_suspended',
+      title: 'Account suspended',
+      message:
+        'Your account has been suspended by an administrator. You can no longer log in.',
+    });
+
+    return user;
+  }
+
+  /**
+   * ACC-16: Reactivate a suspended registered user.
+   */
+  async reactivateUser(
+    adminId: string,
+    userId: string,
+  ): Promise<UserDocument> {
+    const user = await this.findRegisteredUser(userId);
+
+    if (user.status === UserStatus.DEACTIVATED) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.ACCOUNT_DEACTIVATED,
+        'A deactivated account cannot be reactivated through this operation',
+      );
+    }
+
+    if (user.status === UserStatus.ACTIVE) {
+      return user;
+    }
+
+    user.status = UserStatus.ACTIVE;
+    await user.save();
+
+    await this.audit.record({
+      actorId: adminId,
+      action: 'user.reactivated',
+      targetType: 'User',
+      targetId: userId,
+    });
+
+    await this.notifications.notify({
+      userId,
+      type: 'account_reactivated',
+      title: 'Account reactivated',
+      message:
+        'Your account has been reactivated. You can now log in again.',
+    });
+
+    return user;
+  }
+
+  /**
+   * Ensure the target account is a registered user, not an admin or moderator.
+   */
+  private async findRegisteredUser(
+    userId: string,
+  ): Promise<UserDocument> {
+    const user = await this.userModel.findById(userId).exec();
+
+    if (!user || user.role !== UserRole.USER) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        ErrorCode.NOT_FOUND,
+        'Registered user account not found',
+      );
+    }
+
+    return user;
   }
 }

@@ -39,6 +39,9 @@ const DUMMY_HASH = bcrypt.hashSync(
 
 @Injectable()
 export class AuthService {
+  async revokeAllSessionsForUser(userId: string): Promise<void> {
+    await this.sessions.revokeAllForUser(userId);
+  }
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly sessions: SessionsService,
