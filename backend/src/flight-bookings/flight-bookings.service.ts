@@ -21,7 +21,7 @@ import { formatLocal, generateBookingReference, round2, toCsv } from './flight-b
 
 export const HOLD_MINUTES = 10; // FLT-22
 const MAX_ACTIVE_HOLDS_PER_USER = 3; // stops one user from hoarding seats
-const PLATFORM_CURRENCY = 'USD'; // PAY-04: ask Youssef which constant/env he uses and replace this
+const PLATFORM_CURRENCY = 'EGP'; // PAY-04: ask Youssef which constant/env he uses and replace this
 
 @Injectable()
 export class FlightBookingsService
