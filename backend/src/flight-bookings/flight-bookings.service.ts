@@ -11,6 +11,7 @@ import {
   type BookingPaymentSnapshot, type ConfirmBookingInput, type FlightEventPayload,
   type NotificationService, type RefundPreview, type RefundPreviewService,
   type RefundService, type ReleaseInventoryInput, type UpcomingConfirmedBookingsChecker,
+  type FlightBookingHistoryReader
 } from './flight-bookings.imports.js';
 
 import { FlightBooking, type FlightBookingDocument } from './schemas/flight-booking.schema.js';
@@ -25,7 +26,7 @@ const PLATFORM_CURRENCY = 'EGP'; // PAY-04: ask Youssef which constant/env he us
 
 @Injectable()
 export class FlightBookingsService
-  implements BookingLifecycleService, UpcomingConfirmedBookingsChecker, BookingPaymentReader
+  implements BookingLifecycleService, UpcomingConfirmedBookingsChecker, BookingPaymentReader,FlightBookingHistoryReader
 {
   private readonly logger = new Logger(FlightBookingsService.name);
 
@@ -305,9 +306,9 @@ export class FlightBookingsService
     };
   }
 
-  /** Yassin's history check (bookings of ANY status count). Bind it once his interface is known. */
-  async hasBookingsForFlight(flightId: string): Promise<boolean> {
-    return !!(await this.bookings.exists({ flightId }));
+  /** Yassin's FLIGHT_BOOKING_HISTORY_READER: true if the flight EVER had a booking (any status). */
+  async hasAnyBooking(flightId: string, session: ClientSession): Promise<boolean | null> {
+    return !!(await this.bookings.exists({ flightId }).session(session));
   }
 
   // ------------------------------------------------------------ FLT-25: reading
