@@ -18,8 +18,7 @@ import { FlightBooking, type FlightBookingDocument } from './schemas/flight-book
 import {
   BookingRequestDto, FlightBookingsQueryDto, ListMyBookingsQueryDto,
 } from './dto/flight-booking.dto.js';
-import { formatLocal, generateBookingReference, round2, toCsv } from './flight-bookings.utils.js';
-
+import { formatLocal, generateBookingReference, round2, toCsv, type CsvValue } from './flight-bookings.utils.js';
 export const HOLD_MINUTES = 10; // FLT-22
 const MAX_ACTIVE_HOLDS_PER_USER = 3; // stops one user from hoarding seats
 const PLATFORM_CURRENCY = 'EGP'; // PAY-04: ask Youssef which constant/env he uses and replace this
@@ -533,8 +532,7 @@ export class FlightBookingsService
     if (!flight) throw new NotFoundException('Flight not found');
     await this.moderators.assertCanManage(user, ProviderType.AIRLINE, String(flight.airlineId));
     const rows = await this.bookings.find({ flightId: flight._id, status: BookingStatus.CONFIRMED }).sort({ createdAt: 1 }).lean();
-    const out: unknown[][] = [['Reference', 'Passenger', 'Passport/ID', 'Date of birth', 'Cabin', 'Extra bags', 'Status']];
-    for (const b of rows)
+    const out: CsvValue[][] = [['Reference', 'Passenger', 'Passport/ID', 'Date of birth', 'Cabin', 'Extra bags', 'Status']];    for (const b of rows)
       for (const p of b.passengers)
         out.push([b.reference, p.fullName, p.passportNumber, p.dateOfBirth.toISOString().slice(0, 10), b.cabinClass, p.extraBags, b.status]);
     return toCsv(out);
