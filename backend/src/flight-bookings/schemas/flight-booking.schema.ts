@@ -14,9 +14,19 @@ export const PassengerSchema = SchemaFactory.createForClass(Passenger);
 
 @Schema({ collection: 'flightbookings', timestamps: true })
 export class FlightBooking {
-  @Prop({ type: MongoSchema.Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  })
   userId: Types.ObjectId;
-  @Prop({ type: MongoSchema.Types.ObjectId, ref: 'Flight', required: true, index: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: 'Flight',
+    required: true,
+    index: true,
+  })
   flightId: Types.ObjectId;
   @Prop({ type: MongoSchema.Types.ObjectId, ref: 'Airline', required: true })
   airlineId: Types.ObjectId;

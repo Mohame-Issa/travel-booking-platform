@@ -1,6 +1,198 @@
 AI Prompt Log
 
 ================================================
+Date: 2026-11-13
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: PAY-04, FLT-01, FLT-03, FLT-04, FLT-05, FLT-11,
+FLT-15, FLT-17, HTL-11, HTL-12, GEN-12, GEN-13
+
+Prompt:
+Preserve my uncommitted currency changes and docs; fetch latest develop and
+prepare a separate integration branch/worktree. Include cadd126 and the PAY-04
+correction, preserving teammate payments/refunds/config and every AI_PROMPTS
+entry. Avoid duplicate PLATFORM_CURRENCY, resolve conflicts, run all checks and
+report the review diff. No shared writes, commit, push, PR or branch merge yet.
+
+How the output was used:
+Codex snapshotted both patches, the new document and 18 file hashes, then created
+D:\Projects\travel-booking-platform-integration-pay04 on
+feature/PAY-04-yassin-integration from fetched develop 1a83d7b. Applied cadd126's
+file changes without committing, followed by the preserved currency patch. Both
+applied cleanly. Excluded the shared export already identical upstream. Verified
+one currency definition, untouched teammate/config/package/common files, and all
+16 upstream plus 11 original AI entries retained as 20 unique entries. Added this
+new entry only in the integration tree. Original working files/branch/index stay
+unchanged. No .env or ZIP was copied into the integration tree.
+Installed dependencies from develop's unchanged lockfile with scripts disabled.
+TypeScript no-emit, build and lint passed; all 121 unit tests and 43 isolated
+integration tests passed, with zero failures/skips. Reference check passed without
+connecting. A redundant MongoDB binary download was interrupted and integration
+tests rerun using the existing local test executable, with downloads disabled.
+No shared database or external payment operation ran. Prepared
+docs/yassin-integration-results.md with the exact diff, preservation evidence and
+remaining owner dependencies. Changes are staged for review, with no commit,
+push, PR, branch merge or rebase. No conflicts remain.
+================================================
+
+================================================
+Date: 2026-11-13
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: PAY-04, FLT-01, FLT-03, FLT-04, FLT-08, FLT-11,
+FLT-15, FLT-17, HTL-11, HTL-12, GEN-12
+
+Prompt:
+Focus only on my PAY-04 responsibilities. Fetch develop without merging/rebasing,
+inspect the shared PLATFORM_CURRENCY and official requirement, fix my airline/
+flight currency validation and pricing consistency for EGP, check my hotel schemas/
+search without modifying Hashad's writers, add currency regressions and run checks.
+Identify my pushed work still unmerged, including the TypeScript fix and fixture
+helper, and plan integration while preserving teammates' updates and AI log entries.
+Do not edit Omar's booking code, write shared data, reset/discard, commit, push or merge.
+
+How the output was used:
+Codex fetched develop at 1a83d7b and confirmed PAY-04 requires one platform currency.
+Copied only the exact missing shared EGP constant/comment from develop; that common
+file now matches upstream. Updated Yassin's provider schemas/DTOs, monetary service
+guards, flight details and default flight/hotel searches to enforce EGP. Foreign
+query currencies are rejected and legacy foreign price records are excluded or
+blocked for new price operations without conversion, relabelling or migration.
+Country CSV and itinerary display currencies are preserved. Demo seed definitions
+reuse the constant; no shared seed was run. No booking/management/payment/refund
+module was edited. Updated own Swagger descriptions, tests and documentation.
+Added regressions for all six other supported currencies, valid EGP/omitted filters,
+HTTP/internal validation, legacy search exclusion and price preservation. New test
+fixtures simulate legacy foreign records only through raw writes to disposable
+local test databases. TypeScript no-emit, build and lint passed; 62 unit tests and
+43 isolated integration tests passed. A synchronous-error assertion in a new test
+was corrected before the passing integration rerun. No tests were skipped.
+Verified cadd126 is the only pushed feature commit absent from develop; the original
+1bfea8f implementation is already merged. Prepared docs/yassin-pay04-integration-plan.md
+for a later approved integration worktree/cherry-pick of only remaining work, retaining
+upstream payment/refund/config changes and all authors' AI_PROMPTS entries. No staging,
+branch change, merge, rebase, commit, push, shared DB connection or write occurred.
+================================================
+
+================================================
+Date: 2026-11-12
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-02, FLT-03, FLT-04, FLT-05, GEN-12, GEN-13
+
+Prompt:
+I approve committing and normally pushing my remaining local TypeScript fixes,
+test-flight fixture helper, tests, documentation and relevant AI_PROMPTS entries
+to feature/GEN-12-shared-schemas-seeding in D:\Projects\travel-booking-platform.
+Review every file, exclude credentials/environment/generated/unrelated files,
+confirm the helper requires explicit write authorization, and run TypeScript,
+build, lint and relevant tests. Do not merge, create additional flights, rerun
+shared writes or modify teammates' code. Report the commit, files, tests and status.
+
+How the output was used:
+Codex reviewed the five pending project files, excluded the previous ZIP export,
+and confirmed backend/.env remains ignored and untracked. The helper's CLI defaults
+to read-only, import has no execution side effect, and writes require --apply;
+fixed target/provider/reference checks, unique indexes, a transaction and exact
+existing-fixture checks prevent duplicate creation or overwriting matching data.
+No source behavior or teammate module was changed during publication preparation.
+Executed local TypeScript no-emit, build and lint successfully, followed by all
+55 unit tests and 41 integration tests (including the five fixture safety cases)
+with zero failures/skips. Integration databases were disposable local replica sets
+and did not load .env. UTF-8 content/security and staged scope/whitespace checks
+precede the commit. Only the explicitly reviewed five project files are approved
+for this publication. Remote develop has advanced independently; no merge/rebase
+or direct push to develop/main is authorized or performed. The shared fixture
+helper was not executed against the shared database during this publication.
+================================================
+
+================================================
+Date: 2026-11-12
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-02, FLT-03, FLT-04, FLT-05, GEN-12, GEN-13
+
+Prompt:
+I approve creating the two proposed test flights and their Economy cabin
+inventories in our shared travel-platform MongoDB database for Omar's booking
+tests. Verify the target and ensure the flights do not already exist. Reuse
+Yassin Demo Air and CAI/DXB, use existing validation/flight creation logic,
+create YS9101/YS9102 with one Economy cabin each, 10 seats and fare 1000 EGP,
+valid future airport-local times, and safe reruns. Do not change existing
+providers, airports, accounts or unrelated records. Read back and return actual
+ObjectIds and details. No bookings/payments, credential output, commit or push.
+Report the local TypeScript fix status too.
+
+How the output was used:
+Codex completed a read-only preflight: correct travel-platform database, existing
+active YS airline and CAI/DXB time zones, absent YS9101/YS9102, required existing
+flight/cabin unique indexes and one active assigned airline moderator. Added the
+scoped backend/scripts/omar-booking-fixtures.mjs helper and five isolated local
+safety tests. The helper reuses the shared ValidationPipe, DTOs, FlightsService.create,
+provider-assignment check and existing schemas. One outer transaction includes
+all four inserts via Mongoose transaction async-local storage; no app lifecycle,
+worker, automatic DDL, general seed, login or account change is used.
+TypeScript no-emit, build, lint, 10 affected schema tests and all 5 local fixture
+tests passed. Tests cover preservation, reruns, wrong target, rollback, conflicts
+and concurrent runners. Applied only after these checks and the user's explicit
+shared-write approval. Actual command monitoring recorded four inserts only:
+two flights and two cabins. The rerun reused the same IDs with zero new records
+and zero writes. A separate native-driver read verified both flight/cabin pairs,
+their BSON ObjectId references, correct UTC dates and zero held/booked counters.
+Updated docs/omar-booking-test-data-plan.md with actual IDs, times and verification.
+No secrets were displayed. No bookings/payments were created, no unrelated teammate
+source was changed, and no commit or push occurred. The earlier catalogue-schemas.spec.ts
+type fix remains local.
+================================================
+
+================================================
+Date: 2026-11-12
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-02, FLT-03, FLT-04, FLT-05, GEN-12, GEN-13
+
+Prompt:
+Omar needs actual test flight IDs and airport IDs for his booking system. First
+check the shared MongoDB database read-only for airports, airlines and flights;
+report existing records and IDs. Do not seed or create data. If data is missing,
+prepare a safe setup plan and wait for approval before any shared database write.
+Youssef reported two TypeScript errors in backend/src/flights/catalogue-schemas.spec.ts
+with npx tsc --noEmit. Reproduce and fix both without weakening type safety, then
+verify TypeScript compilation, build and affected tests. Work only in
+D:\Projects\travel-booking-platform. Do not change unrelated teammate code,
+commit, push, merge or write to the shared database without approval.
+
+How the output was used:
+Codex confirmed the feature branch and inspected the existing schemas/configuration.
+A native MongoDB-driver read-only inspector was prepared with bounded list/count/find
+queries and safe catalogue-only projections, without application/model startup or
+automatic index creation. It could not connect: backend/.env is absent and MONGODB_URI
+is not configured in this execution session. No database connection or write occurred;
+shared record counts and IDs remain unknown, not confirmed missing. Requested private
+local configuration without asking for credentials in chat. Prepared the conditional
+approval-gated plan in docs/omar-booking-test-data-plan.md, reusing existing data first.
+Reproduced TS2554 (expected 2 arguments) and TS2339 (instance missing) at line 77.
+The heterogeneous Mongoose model union could not resolve the overloaded schema.path
+getter. Replaced that call with the typed schema.paths map and preserved the ObjectId
+assertion, including failure for an absent path. No casts, suppressions, relaxed
+compiler settings, runtime schema changes or new dependencies were introduced.
+Executed verification: local tsc --noEmit --incremental false --pretty false passed;
+npm run build passed; npm run lint passed; npm test -- src/flights/catalogue-schemas.spec.ts
+passed all 10 affected tests. No shared DB, account, unrelated teammate module or
+Git publication was changed.
+Follow-up: after Yassin privately configured the ignored backend/.env and replied
+ready, read-only direct count/find queries succeeded against travel-platform:
+8 airports, 1 active airline (Yassin Demo Air/YS/EGP), 0 flights and 0 cabins.
+Verified the existing airline ID is BSON ObjectId and airport IDs are IATA strings.
+Metadata listing returned server code 8000; direct collection reads succeeded and
+were complete. No connection string, JWT/seed credential or unrelated personal data
+was displayed. Updated the test-data plan with the observed IDs and an exact
+approval-gated proposal for two future flights and two Economy cabins, reusing the
+existing airline and airports. No seed command, app/model startup, index creation,
+shared-database write, commit, push or merge was performed.
+================================================
+
+================================================
 Date: 2026-11-11
 Student: Yassin Shawr
 Tool: Codex
@@ -431,8 +623,7 @@ which payments now enforce. I reviewed the diff before merging.
 ================================================
 
 
-================================================
-Date: 2026-11-12
+=========================================Date: 2026-11-12
 Student: Omar Hisham
 Tool: Claude
 Related Requirement: FLT-19, FLT-21, FLT-22, FLT-23, FLT-25, FLT-26, FLT-29, GEN-11
@@ -481,3 +672,60 @@ Removed the placeholder provider from flights.module.ts so the real reader is us
 
 
 
+=======
+================================================
+Date: 2026-11-12
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-03, FLT-09
+
+Prompt:
+Check the requirements sheet for how a 0% refund and "days remaining" must be
+handled, instead of asking the team, and fix my code to match.
+
+How the output was used:
+FLT-09 ("highest threshold not exceeding the days remaining", integer
+thresholds) already matches counting whole days, so no change. PAY-03 creates
+a refund only for a positive amount, so a 0% cancellation no longer creates a
+refund record: createRefund returns refundId null and status 'none'. This
+needed a small change to the shared RefundResult contract. Checked that Omar
+Hashem's unmerged flight-bookings branch still builds and passes its tests
+with the change.
+Related Requirement: PAY-01, PAY-02
+
+Prompt:
+Check the repo after my PR was merged and review how Omar Hashem's flight
+bookings use my payment contracts. Then fix the Swagger "Duplicate DTO
+BaggagePolicyDto" warning and make the webhook refuse to refund a payment
+whose booking is already Confirmed.
+
+How the output was used:
+Confirmed Omar's reader, confirm/release and refund calls match the shared
+contracts. Renamed my DTO to PolicyBaggageSnapshotDto and added a check in
+the webhook: when confirmBooking answers 409, the booking is read again and
+the late-payment refund only happens if it is not Confirmed. Verified with
+build, lint and unit tests (new test for the guard).
+================================================
+
+================================================
+Date: 2026-11-13
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: GEN-13, ACC-13, PAY-01, PAY-03, PAY-04, GEN-01, GEN-07, GEN-08, HTL-01..HTL-22
+
+Prompt:
+Here are my teammates' WhatsApp messages. Do whatever is required: review and
+merge Rashed's pull request and the other open PRs, and anything else that
+needs to be done.
+
+How the output was used:
+Claude Code built, linted and tested every open PR alone and all together
+(unit tests plus integration tests on local in-memory MongoDB, never the
+shared database). It also started the merged app on a temporary database and
+tested ACC-13 over HTTP (201/400/401/403/404/409, and audit log entry). PRs
+were merged as #6, #7 (AI_PROMPTS conflict: both entries kept), #8, #10, #9.
+On #9 it removed two unused imports and documented the error responses. In my
+own area it fixed the reported startup crash: empty optional lines copied from
+.env.example (PORT=, COOKIE_SAMESITE=) now mean "not set" (GEN-13 config),
+with unit tests and a real app start. I reviewed the diffs before merging.
+================================================

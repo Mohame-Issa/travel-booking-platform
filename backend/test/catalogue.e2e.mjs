@@ -234,15 +234,15 @@ test('public registration cannot create an administrator; profile management enf
     .expect(400);
   await request(http)
     .post('/api/airlines')
-    .send({ name: 'Other', code: 'OA', currency: 'USD' })
+    .send({ name: 'Other', code: 'OA', currency: 'EGP' })
     .expect(401);
   await outsider
     .post('/api/airlines')
-    .send({ name: 'Other', code: 'OA', currency: 'USD' })
+    .send({ name: 'Other', code: 'OA', currency: 'EGP' })
     .expect(403);
   const created = await admin
     .post('/api/airlines')
-    .send({ name: 'Other Airline', code: 'OA', currency: 'USD' })
+    .send({ name: 'Other Airline', code: 'OA', currency: 'EGP' })
     .expect(201);
   await moderator
     .patch(`/api/airlines/${created.body._id}`)
@@ -260,7 +260,7 @@ test('public registration cannot create an administrator; profile management enf
   await moderator
     .patch(`/api/airlines/${airline.id}`)
     .send({ logoAssetId: 'pending-owned-upload' })
-    .expect(501);
+    .expect(404); // real GEN-08 resolver: unknown asset (was 501 with the pending stub)
 });
 
 test('baggage and cancellation policies enforce limits and unique thresholds', async () => {
@@ -888,7 +888,7 @@ test('deactivated hotels disappear even when rooms are free; provider deactivati
     cityId: 'dubai',
     countryCode: 'AE',
     starClass: 4,
-    currency: 'AED',
+    currency: 'EGP',
   });
   const room = await connection.model('Room').create({
     hotelId: hotel._id,
@@ -942,7 +942,7 @@ test('regression: valid fractional prices are not silently rounded to zero', asy
     cityId: 'london',
     countryCode: 'GB',
     starClass: 3,
-    currency: 'GBP',
+    currency: 'EGP',
   });
   const room = await connection.model('Room').create({
     hotelId: hotel._id,
@@ -1056,7 +1056,7 @@ test('logo integration: missing adapter returns 501 atomically; resolver receive
   await moderator
     .patch(`/api/airlines/${airline.id}`)
     .send({ name: 'Must not partially save', logoAssetId: 'test-asset' })
-    .expect(501);
+    .expect(404); // real GEN-08 resolver: unknown asset (was 501 with the pending stub)
   assert.equal(
     (await connection.model('Airline').findById(airline.id)).name,
     before.name,
@@ -1135,11 +1135,9 @@ test('legacy airport edits require authoritative all-state booking history, not 
       .patch(`/api/flights/${legacy._id}`)
       .send(change)
       .expect(200);
-    const stored = await connection
-      .model('Flight')
-      .collection.findOne({
-        _id: new connection.base.Types.ObjectId(legacy._id),
-      });
+    const stored = await connection.model('Flight').collection.findOne({
+      _id: new connection.base.Types.ObjectId(legacy._id),
+    });
     assert.equal(stored.bookingCount, 0);
     assert.equal(stored.arrivalAirport, 'RUH');
     assert.deepEqual(calls, [legacy._id, legacy._id]);
@@ -1246,61 +1244,59 @@ test('acknowledgement loss replays the same event ID; a mock receipt deduplicate
   }
 });
 
-test('currency characterization: numeric provider-unit filters and ordering perform no FX', async () => {
+test('PAY-04: default search excludes legacy foreign prices and rejects foreign currency filters', async () => {
   const departureDate = '2099-12-20';
   for (const [currency, price] of [
     ['EGP', 702],
     ['USD', 701],
   ]) {
-    const provider = await connection
-      .model('Airline')
-      .create({
-        name: `Currency ${currency}`,
-        code: currency === 'EGP' ? 'QE' : 'QU',
-        currency,
-      });
-    const flight = await connection
-      .model('Flight')
-      .create({
-        airlineId: provider._id,
-        flightNumber: `FX${currency}`,
-        departureAirport: 'CAI',
-        arrivalAirport: 'DXB',
-        departureDate,
-        departureTime: new Date(`${departureDate}T08:00Z`),
-        arrivalTime: new Date(`${departureDate}T11:00Z`),
-      });
+    const provider = await connection.model('Airline').create({
+      name: `Currency ${currency}`,
+      code: currency === 'EGP' ? 'QE' : 'QU',
+      currency: 'EGP',
+    });
+    const flight = await connection.model('Flight').create({
+      airlineId: provider._id,
+      flightNumber: `FX${currency}`,
+      departureAirport: 'CAI',
+      arrivalAirport: 'DXB',
+      departureDate,
+      departureTime: new Date(`${departureDate}T08:00Z`),
+      arrivalTime: new Date(`${departureDate}T11:00Z`),
+    });
     await connection
       .model('CabinInventory')
       .create({ flightId: flight._id, ...cabinBody(5, price) });
-    const hotel = await connection
-      .model('Hotel')
-      .create({
-        name: `Currency ${currency}`,
-        address: 'Fixture',
-        cityId: 'frankfurt',
-        countryCode: 'DE',
-        starClass: 4,
-        currency,
-      });
-    const room = await connection
-      .model('Room')
-      .create({
-        hotelId: hotel._id,
-        roomNumber: '1',
-        type: 'Single',
-        beds: 1,
-        maxOccupancy: 1,
-        pricePerNight: price,
-      });
-    await connection
-      .model('RoomAvailability')
-      .create({
-        roomId: room._id,
-        startDate: new Date(`${departureDate}T00:00Z`),
-        endDate: new Date('2099-12-23T00:00Z'),
-        kind: 'Available',
-      });
+    const hotel = await connection.model('Hotel').create({
+      name: `Currency ${currency}`,
+      address: 'Fixture',
+      cityId: 'frankfurt',
+      countryCode: 'DE',
+      starClass: 4,
+      currency: 'EGP',
+    });
+    if (currency !== 'EGP') {
+      await connection
+        .model('Airline')
+        .collection.updateOne({ _id: provider._id }, { $set: { currency } });
+      await connection
+        .model('Hotel')
+        .collection.updateOne({ _id: hotel._id }, { $set: { currency } });
+    }
+    const room = await connection.model('Room').create({
+      hotelId: hotel._id,
+      roomNumber: '1',
+      type: 'Single',
+      beds: 1,
+      maxOccupancy: 1,
+      pricePerNight: price,
+    });
+    await connection.model('RoomAvailability').create({
+      roomId: room._id,
+      startDate: new Date(`${departureDate}T00:00Z`),
+      endDate: new Date('2099-12-23T00:00Z'),
+      kind: 'Available',
+    });
   }
   const flightQuery = search({ departureDate, minPrice: 701, maxPrice: 702 });
   const hotelQuery = {
@@ -1318,7 +1314,7 @@ test('currency characterization: numeric provider-unit filters and ordering perf
     const mixed = await request(http).get(path).query(query).expect(200);
     assert.deepEqual(
       items(mixed.body).map((item) => item.currency),
-      ['USD', 'EGP'],
+      ['EGP'],
     );
     const exact = await request(http)
       .get(path)
@@ -1332,10 +1328,81 @@ test('currency characterization: numeric provider-unit filters and ordering perf
       .get(path)
       .query({ ...query, maxPrice: 701 })
       .expect(200);
-    assert.deepEqual(
-      items(inclusive.body).map((item) => item.currency),
-      ['USD'],
+    assert.deepEqual(items(inclusive.body), []);
+    await request(http)
+      .get(path)
+      .query({ ...query, currency: 'USD' })
+      .expect(400);
+    await request(http)
+      .get(path)
+      .query({ ...query, currency: 'EUR' })
+      .expect(400);
+  }
+  const legacy = await connection
+    .model('Airline')
+    .findOne({ code: 'QU' })
+    .lean();
+  assert.equal(legacy.currency, 'USD');
+  assert.equal(
+    (await connection.model('CabinInventory').findOne({ price: 701 })).price,
+    701,
+  );
+});
+
+test('PAY-04: airline creation rejects foreign currency through HTTP and internal service calls', async () => {
+  const before = await connection.model('Airline').countDocuments();
+  for (const currency of ['USD', 'EUR', 'GBP', 'AED', 'JPY', 'SAR']) {
+    await admin
+      .post('/api/airlines')
+      .send({ name: 'Rejected foreign provider', code: 'QM', currency })
+      .expect(400);
+    await assert.rejects(
+      async () =>
+        app
+          .get(AirlinesService)
+          .create({ name: 'Rejected internal provider', code: 'QM', currency }),
+      (error) => error.getStatus() === 400,
     );
+  }
+  assert.equal(await connection.model('Airline').countDocuments(), before);
+});
+
+test('PAY-04: legacy foreign airlines cannot receive new flight/cabin prices or publish flight price details', async () => {
+  const flight = await createFlight('YS800');
+  const cabin = await createCabin(flight._id);
+  await connection
+    .model('Airline')
+    .collection.updateOne({ _id: airline._id }, { $set: { currency: 'USD' } });
+  try {
+    await moderator.post('/api/flights').send(flightBody('YS801')).expect(400);
+    await request(http).get(`/api/flights/${flight._id}`).expect(400);
+    await moderator
+      .post(`/api/flights/${flight._id}/cabins`)
+      .send({ ...cabinBody(), cabinClass: 'Business' })
+      .expect(400);
+    await moderator
+      .patch(`/api/flights/${flight._id}/cabins/${cabin._id}`)
+      .send({ price: 123 })
+      .expect(400);
+    await moderator
+      .put(`/api/airlines/${airline.id}/baggage-policy`)
+      .send({ extraBagPrice: 123, maxExtraBags: 1 })
+      .expect(400);
+    assert.equal(
+      (await connection.model('CabinInventory').findById(cabin._id)).price,
+      100,
+    );
+    assert.equal(
+      (await connection.model('Airline').findById(airline._id)).currency,
+      'USD',
+    );
+  } finally {
+    await connection
+      .model('Airline')
+      .collection.updateOne(
+        { _id: airline._id },
+        { $set: { currency: 'EGP' } },
+      );
   }
 });
 
@@ -1364,63 +1431,53 @@ test('hotel date characterization: today currently means UTC, including local-da
 
 test('local synthetic dataset preserves global ordering and ten-item late pages', async (t) => {
   const departureDate = '2099-12-23';
-  const flights = await connection
-    .model('Flight')
-    .insertMany(
-      Array.from({ length: 500 }, (_, i) => ({
-        airlineId: airline._id,
-        flightNumber: `PERF${i}`,
-        departureAirport: 'CAI',
-        arrivalAirport: 'DXB',
-        departureDate,
-        departureTime: new Date(`${departureDate}T08:00Z`),
-        arrivalTime: new Date(`${departureDate}T11:00Z`),
+  const flights = await connection.model('Flight').insertMany(
+    Array.from({ length: 500 }, (_, i) => ({
+      airlineId: airline._id,
+      flightNumber: `PERF${i}`,
+      departureAirport: 'CAI',
+      arrivalAirport: 'DXB',
+      departureDate,
+      departureTime: new Date(`${departureDate}T08:00Z`),
+      arrivalTime: new Date(`${departureDate}T11:00Z`),
+    })),
+  );
+  await connection.model('CabinInventory').insertMany(
+    flights.map((flight, i) => ({
+      flightId: flight._id,
+      ...cabinBody(5, i + 1),
+    })),
+  );
+  const hotels = await connection.model('Hotel').insertMany(
+    Array.from({ length: 100 }, (_, i) => ({
+      name: `Perf ${i}`,
+      address: 'Fixture',
+      cityId: 'paris',
+      countryCode: 'FR',
+      starClass: 4,
+      currency: 'EGP',
+    })),
+  );
+  const rooms = await connection.model('Room').insertMany(
+    hotels.flatMap((hotel, i) =>
+      Array.from({ length: 10 }, (_, j) => ({
+        hotelId: hotel._id,
+        roomNumber: String(j),
+        type: 'Single',
+        beds: 1,
+        maxOccupancy: 1,
+        pricePerNight: i + j + 1,
       })),
-    );
-  await connection
-    .model('CabinInventory')
-    .insertMany(
-      flights.map((flight, i) => ({
-        flightId: flight._id,
-        ...cabinBody(5, i + 1),
-      })),
-    );
-  const hotels = await connection
-    .model('Hotel')
-    .insertMany(
-      Array.from({ length: 100 }, (_, i) => ({
-        name: `Perf ${i}`,
-        address: 'Fixture',
-        cityId: 'paris',
-        countryCode: 'FR',
-        starClass: 4,
-        currency: 'EUR',
-      })),
-    );
-  const rooms = await connection
-    .model('Room')
-    .insertMany(
-      hotels.flatMap((hotel, i) =>
-        Array.from({ length: 10 }, (_, j) => ({
-          hotelId: hotel._id,
-          roomNumber: String(j),
-          type: 'Single',
-          beds: 1,
-          maxOccupancy: 1,
-          pricePerNight: i + j + 1,
-        })),
-      ),
-    );
-  await connection
-    .model('RoomAvailability')
-    .insertMany(
-      rooms.map((room) => ({
-        roomId: room._id,
-        startDate: new Date(`${departureDate}T00:00Z`),
-        endDate: new Date('2099-12-26T00:00Z'),
-        kind: 'Available',
-      })),
-    );
+    ),
+  );
+  await connection.model('RoomAvailability').insertMany(
+    rooms.map((room) => ({
+      roomId: room._id,
+      startDate: new Date(`${departureDate}T00:00Z`),
+      endDate: new Date('2099-12-26T00:00Z'),
+      kind: 'Available',
+    })),
+  );
   const start = performance.now();
   const flightPage = await request(http)
     .get('/api/flights/search')

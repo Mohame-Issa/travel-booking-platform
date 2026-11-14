@@ -9,8 +9,9 @@ Stripe runs in **test mode only**. Never use real card numbers or live keys.
    - `STRIPE_SECRET_KEY=sk_test_...` (Stripe dashboard, Test mode, Developers, API keys)
    - `STRIPE_WEBHOOK_SECRET=whsec_...` (printed by `stripe listen`, step 3)
 2. Start the API: `cd backend && npm run start:dev`, then open http://localhost:3000/api/docs
-3. In a second terminal:
-   `stripe listen --forward-to localhost:3000/api/payments/webhook`
+3. In a second terminal (Stripe CLI 1.55+ requires `--events`):
+   `stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,refund.updated,refund.failed --forward-to localhost:3000/api/payments/webhook`
+   Keep the app, `stripe listen` and a third terminal for commands open at the same time.
 4. Register and log in a test user in Swagger (`@yourname-test.example` email).
    Delete it when you are done (AI_RULES 0.4).
 
@@ -41,12 +42,23 @@ late payments.
 
 ## 3. Stripe CLI checks that work today
 
+`stripe trigger payment_intent.*` fails on new sandbox accounts (its fixture
+sends `payment_method_types`, which Stripe now rejects). Create the test
+payments directly instead, with the same settings our app uses:
+
 | Command | Expected |
 |---|---|
-| `stripe trigger payment_intent.succeeded` | `[200]` in `stripe listen`; app log "No payment for PaymentIntent ...; ignoring" |
-| `stripe trigger payment_intent.payment_failed` | `[200]`, same log |
+| `stripe payment_intents create --amount=5000 --currency=egp --payment-method=pm_card_visa --confirm=true -d "automatic_payment_methods[enabled]=true" -d "automatic_payment_methods[allow_redirects]=never"` | `status: succeeded`; `stripe listen` shows `payment_intent.succeeded` then `<-- [200]`; app log "No payment for PaymentIntent ...; ignoring" |
+| Same with `--payment-method=pm_card_chargeDeclined` | prints `card_declined` (expected); PaymentIntent goes back to `requires_payment_method` (what retry relies on); `stripe listen` shows `payment_intent.payment_failed` then `<-- [200]` |
 | `stripe events resend evt_...` (an id from above) | `[200]`; app log "Skipping already processed event" |
 | `curl.exe -X POST http://localhost:3000/api/payments/webhook -H "Content-Type: application/json" -H "stripe-signature: t=1,v1=fake" -d "{}"` | 400 `INVALID_WEBHOOK_SIGNATURE` |
+
+`[200]` proves the signature over the raw body was verified with
+`STRIPE_WEBHOOK_SECRET`. `[400]` means the secret in `.env` does not match the
+current `stripe listen` session (or the app was not restarted after changing it).
+"Connection refused" means the app is not running.
+
+Verified on 2026-11-12 by Youssef Khafagy: both events answered `[200]`.
 
 ## 4. End-to-end (needs a real Pending Payment booking)
 

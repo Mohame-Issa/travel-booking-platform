@@ -69,7 +69,7 @@ export class RefundResponseDto {
   @ApiPropertyOptional({
     example: 're_3Q...',
     nullable: true,
-    description: 'null when the amount is 0 (no Stripe refund needed)',
+    description: 'null if the Stripe call failed (status Failed)',
   })
   stripeRefundId: string | null;
 

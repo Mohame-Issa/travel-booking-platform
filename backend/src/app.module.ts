@@ -4,6 +4,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { Connection } from 'mongoose';
 import { AuthModule } from './auth/auth.module.js';
+// Mohamed Hashad: shared services (GEN-01/07/08); kept apart from other PRs' import lines
+import { AuditModule } from './audit/audit.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { UploadsModule } from './uploads/uploads.module.js';
+import { HotelBookingsModule } from './hotel-bookings/hotel-bookings.module.js';
+import { HotelsModule } from './hotels/hotels.module.js';
 import { AuthGuard } from './auth/guards/auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
 import { PlaceholderIntegrationsModule } from './common/placeholders/placeholder-integrations.module.js';
@@ -18,8 +24,7 @@ import { AirportsModule } from './airports/airports.module.js';
 import { FlightsModule } from './flights/flights.module.js';
 import { FlightBookingsModule } from './flight-bookings/flight-bookings.module.js';
 import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
-
-
+import { AdminModule } from './admin/admin.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
@@ -45,6 +50,7 @@ import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
     UsersModule,
     AuthModule,
     AccountsModule,
+    AdminModule,
     // Feature modules are added below this line, one per teammate PR.
     PaymentsModule,
     RefundsModule,
@@ -53,6 +59,11 @@ import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
     FlightsModule,
     FlightBookingsModule,
     HotelsCatalogueModule,
+    AuditModule,
+    NotificationsModule,
+    UploadsModule,
+    HotelBookingsModule,
+    HotelsModule,
   ],
   controllers: [HealthController],
   providers: [
