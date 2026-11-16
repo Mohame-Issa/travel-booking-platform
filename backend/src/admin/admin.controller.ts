@@ -1,4 +1,3 @@
-
 import {
   Body,
   Controller,
@@ -34,9 +33,11 @@ import {
 
 import { CreateModeratorDto } from './dto/create-moderator.dto.js';
 import { ListAccountsQueryDto } from './dto/list-accounts-query.dto.js';
+import { AdminBookingResponseDto } from './dto/admin-booking-response.dto.js';
+import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
 import { AdminService } from './admin.service.js';
 
-/** Admin account-management endpoints. */
+/** Admin account and booking management endpoints. */
 @ApiTags('Admin')
 @ApiCookieAuth()
 @Roles(UserRole.ADMIN)
@@ -111,5 +112,29 @@ export class AdminController {
       items: result.items.map(toPublicUser),
       meta: result.meta,
     };
+  }
+
+  /** ACC-17: read-only list of all flight and hotel bookings (admin only). */
+  @Get('bookings')
+  @ApiOperation({
+    summary: 'List flight and hotel bookings with filters and pagination',
+  })
+  @ApiPaginatedResponse(AdminBookingResponseDto)
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description: 'Invalid pagination or booking filter query',
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'Authentication required',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'Admin access required',
+  })
+  async listBookings(
+    @Query() query: ListBookingsQueryDto,
+  ): Promise<Paginated<AdminBookingResponseDto>> {
+    return this.adminService.listBookings(query);
   }
 }
