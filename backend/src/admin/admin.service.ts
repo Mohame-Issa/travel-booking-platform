@@ -1,4 +1,3 @@
-
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -123,7 +122,7 @@ export class AdminService {
   async listAccounts(
     query: ListAccountsQueryDto,
   ): Promise<Paginated<UserDocument>> {
-    const { page = 1, search, role, status } = query;
+    const { page, search, role, status } = query;
 
     const filter: Record<string, unknown> = {};
 
@@ -172,7 +171,10 @@ export class AdminService {
   }
 
   /**
-   * ACC-13: Create a moderator assigned to exactly one provider.
+   * ACC-13: name, email and a temporary password set by the admin; the
+   * moderator must change it on first login (mustChangePassword). The unique
+   * moderatorId index on ModeratorAssignment guarantees exactly one provider.
+   * The action is recorded through the audit service (GEN-07).
    */
   async createModerator(
     adminId: string,
@@ -240,6 +242,7 @@ export class AdminService {
         assignedBy: adminId,
       });
     } catch (error: unknown) {
+      // Roll back the moderator if the assignment cannot be created.
       await this.userModel.deleteOne({ _id: moderator._id }).exec();
       throw error;
     }
@@ -264,13 +267,7 @@ export class AdminService {
   async listBookings(
     query: ListBookingsQueryDto,
   ): Promise<Paginated<AdminBookingItem>> {
-    const {
-      page = 1,
-      type,
-      status,
-      from,
-      to,
-    } = query;
+    const { page, type, status, from, to } = query;
 
     const skip = (page - 1) * PAGE_SIZE;
     const fetchLimit = skip + PAGE_SIZE;
@@ -301,79 +298,73 @@ export class AdminService {
     const includeFlights = !type || type === 'flight';
     const includeHotels = !type || type === 'hotel';
 
-    const [
-      flightRowsResult,
-      hotelRowsResult,
-      flightCount,
-      hotelCount,
-    ] = await Promise.all([
-      includeFlights
-        ? this.flightBookingModel
-            .find(flightFilter)
-            .populate({
-              path: 'userId',
-              select: 'name email',
-            })
-            .populate({
-              path: 'airlineId',
-              select: 'name code',
-            })
-            .sort({ departureTime: -1 })
-            .limit(fetchLimit)
-            .lean()
-            .exec()
-        : Promise.resolve([]),
+    const [flightRowsResult, hotelRowsResult, flightCount, hotelCount] =
+      await Promise.all([
+        includeFlights
+          ? this.flightBookingModel
+              .find(flightFilter)
+              .populate({
+                path: 'userId',
+                select: 'name email',
+              })
+              .populate({
+                path: 'airlineId',
+                select: 'name code',
+              })
+              .sort({ departureTime: -1 })
+              .limit(fetchLimit)
+              .lean()
+              .exec()
+          : Promise.resolve([]),
 
-      includeHotels
-        ? this.hotelBookingModel
-            .find(hotelFilter)
-            .populate({
-              path: 'userId',
-              select: 'name email',
-            })
-            .populate({
-              path: 'hotelId',
-              select: 'name',
-            })
-            .sort({ checkInDate: -1 })
-            .limit(fetchLimit)
-            .lean()
-            .exec()
-        : Promise.resolve([]),
+        includeHotels
+          ? this.hotelBookingModel
+              .find(hotelFilter)
+              .populate({
+                path: 'userId',
+                select: 'name email',
+              })
+              .populate({
+                path: 'hotelId',
+                select: 'name',
+              })
+              .sort({ checkInDate: -1 })
+              .limit(fetchLimit)
+              .lean()
+              .exec()
+          : Promise.resolve([]),
 
-      includeFlights
-        ? this.flightBookingModel.countDocuments(flightFilter).exec()
-        : Promise.resolve(0),
+        includeFlights
+          ? this.flightBookingModel.countDocuments(flightFilter).exec()
+          : Promise.resolve(0),
 
-      includeHotels
-        ? this.hotelBookingModel.countDocuments(hotelFilter).exec()
-        : Promise.resolve(0),
-    ]);
+        includeHotels
+          ? this.hotelBookingModel.countDocuments(hotelFilter).exec()
+          : Promise.resolve(0),
+      ]);
 
-    const flightRows =
-      flightRowsResult as unknown as FlightBookingRow[];
+    const flightRows = flightRowsResult as unknown as FlightBookingRow[];
 
-    const hotelRows =
-      hotelRowsResult as unknown as HotelBookingRow[];
+    const hotelRows = hotelRowsResult as unknown as HotelBookingRow[];
 
     const flightItems: AdminBookingItem[] = flightRows.map((booking) => {
-      const user = booking.userId as PopulatedUser;
-      const airline = booking.airlineId as PopulatedProvider;
+      const user = booking.userId as PopulatedUser | null;
+      const airline = booking.airlineId as PopulatedProvider | null;
 
       return {
         id: booking._id.toString(),
         type: 'flight',
         reference: booking.reference ?? null,
-        user: {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-        },
-        provider: {
-          id: airline._id.toString(),
-          name: airline.name,
-          code: airline.code,
-        },
+        user: user
+          ? { id: user._id.toString(), name: user.name, email: user.email }
+          : { id: '', name: 'Deleted user', email: '' },
+        provider: airline
+          ? {
+              id: airline._id.toString(),
+              name: airline.name,
+              code: airline.code,
+            }
+          : { id: '', name: 'Unknown airline' },
         startDate: booking.departureTime,
         endDate: booking.arrivalTime,
         amount: booking.totalAmount,
@@ -384,22 +375,19 @@ export class AdminService {
     });
 
     const hotelItems: AdminBookingItem[] = hotelRows.map((booking) => {
-      const user = booking.userId as PopulatedUser;
-      const hotel = booking.hotelId as PopulatedProvider;
+      const user = booking.userId as PopulatedUser | null;
+      const hotel = booking.hotelId as PopulatedProvider | null;
 
       return {
         id: booking._id.toString(),
         type: 'hotel',
         reference: booking.reference ?? null,
-        user: {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-        },
-        provider: {
-          id: hotel._id.toString(),
-          name: hotel.name,
-        },
+        user: user
+          ? { id: user._id.toString(), name: user.name, email: user.email }
+          : { id: '', name: 'Deleted user', email: '' },
+        provider: hotel
+          ? { id: hotel._id.toString(), name: hotel.name }
+          : { id: '', name: 'Unknown hotel' },
         startDate: booking.checkInDate,
         endDate: booking.checkOutDate,
         amount: booking.totalAmount,
@@ -413,8 +401,7 @@ export class AdminService {
 
     allBookings.sort(
       (a, b) =>
-        new Date(b.startDate).getTime() -
-        new Date(a.startDate).getTime(),
+        new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
     );
 
     const items = allBookings.slice(skip, skip + PAGE_SIZE);
