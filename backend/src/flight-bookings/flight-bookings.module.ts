@@ -1,16 +1,30 @@
 import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
-  Airline, AirlinePolicy, AirlinePolicySchema, AirlineSchema, Airport, AirportSchema, CabinInventory,
-  CabinInventorySchema, FLIGHT_BOOKING_LIFECYCLE, FLIGHT_BOOKING_PAYMENT_READER,
-  FLIGHT_UPCOMING_BOOKINGS_CHECKER, Flight, FlightSchema, FlightsModule,
-  FLIGHT_BOOKING_HISTORY_READER
+  Airline,
+  AirlinePolicy,
+  AirlinePolicySchema,
+  AirlineSchema,
+  Airport,
+  AirportSchema,
+  CabinInventory,
+  CabinInventorySchema,
+  FLIGHT_BOOKING_LIFECYCLE,
+  FLIGHT_BOOKING_PAYMENT_READER,
+  FLIGHT_UPCOMING_BOOKINGS_CHECKER,
+  Flight,
+  FlightSchema,
+  FlightsModule,
+  FLIGHT_BOOKING_HISTORY_READER,
 } from './flight-bookings.imports.js';
 import { FlightBookingEventsListener } from './flight-booking-events.listener.js';
 import { FlightBookingsController } from './flight-bookings.controller.js';
 import { FlightBookingsService } from './flight-bookings.service.js';
 import { FlightPassengersController } from './flight-passengers.controller.js';
-import { FlightBooking, FlightBookingSchema } from './schemas/flight-booking.schema.js';
+import {
+  FlightBooking,
+  FlightBookingSchema,
+} from './schemas/flight-booking.schema.js';
 
 @Global()
 @Module({
@@ -30,10 +44,25 @@ import { FlightBooking, FlightBookingSchema } from './schemas/flight-booking.sch
     FlightBookingsService,
     FlightBookingEventsListener,
     { provide: FLIGHT_BOOKING_LIFECYCLE, useExisting: FlightBookingsService },
-    { provide: FLIGHT_UPCOMING_BOOKINGS_CHECKER, useExisting: FlightBookingsService },
-    { provide: FLIGHT_BOOKING_PAYMENT_READER, useExisting: FlightBookingsService },
-    { provide: FLIGHT_BOOKING_HISTORY_READER, useExisting: FlightBookingsService },
+    {
+      provide: FLIGHT_UPCOMING_BOOKINGS_CHECKER,
+      useExisting: FlightBookingsService,
+    },
+    {
+      provide: FLIGHT_BOOKING_PAYMENT_READER,
+      useExisting: FlightBookingsService,
+    },
+    {
+      provide: FLIGHT_BOOKING_HISTORY_READER,
+      useExisting: FlightBookingsService,
+    },
   ],
-  exports: [FLIGHT_BOOKING_LIFECYCLE, FLIGHT_UPCOMING_BOOKINGS_CHECKER, FLIGHT_BOOKING_PAYMENT_READER,FLIGHT_BOOKING_HISTORY_READER, FlightBookingsService],
+  exports: [
+    FLIGHT_BOOKING_LIFECYCLE,
+    FLIGHT_UPCOMING_BOOKINGS_CHECKER,
+    FLIGHT_BOOKING_PAYMENT_READER,
+    FLIGHT_BOOKING_HISTORY_READER,
+    FlightBookingsService,
+  ],
 })
 export class FlightBookingsModule {}

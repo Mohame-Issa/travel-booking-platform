@@ -26,11 +26,7 @@ import {
     ]),
   ],
   controllers: [FlightsController],
-  providers: [
-    FlightsService,
-    FlightEventsService,
-    
-  ],
+  providers: [FlightsService, FlightEventsService],
   exports: [FlightsService, FlightEventsService, MongooseModule],
 })
 export class FlightsModule {}
