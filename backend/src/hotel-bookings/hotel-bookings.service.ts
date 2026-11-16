@@ -131,6 +131,17 @@ export class HotelBookingsService
 
     return this.connection.transaction(async (session) => {
       await lockRooms(this.rooms, ids, session);
+      // ACC-15: the hotel may have been deactivated since the check above.
+      const current = await this.hotels
+        .findById(hotel._id, { status: 1 })
+        .session(session)
+        .lean()
+        .exec();
+      if (current?.status !== ProviderStatus.ACTIVE)
+        throw conflict(
+          ErrorCode.PROVIDER_DEACTIVATED,
+          'This hotel is not accepting reservations',
+        );
       const now = new Date();
       // Re-read inside the lock: a concurrent deactivation or occupancy/price edit (HTL-05/06)
       // must win or lose cleanly, so guests and prices are checked against these rows.
@@ -267,6 +278,17 @@ export class HotelBookingsService
         throw conflict(
           ErrorCode.BOOKING_NOT_CONFIRMABLE,
           `The reservation is ${booking.status} (GEN-11)`,
+        );
+      // ACC-15: a hold on a hotel deactivated before payment is not confirmed (payments then refunds).
+      const hotel = await this.hotels
+        .findById(booking.hotelId, { status: 1 })
+        .session(session)
+        .lean()
+        .exec();
+      if (hotel?.status !== ProviderStatus.ACTIVE)
+        throw conflict(
+          ErrorCode.BOOKING_NOT_CONFIRMABLE,
+          'The hotel is no longer accepting reservations',
         );
 
       const now = new Date();

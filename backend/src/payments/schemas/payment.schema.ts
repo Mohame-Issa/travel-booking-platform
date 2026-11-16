@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { Schema as MongooseSchema, HydratedDocument, Types } from 'mongoose';
 import type { BookingType } from '../../common/interfaces/index.js';
 import { PaymentStatus } from '../payments.constants.js';
 
@@ -14,14 +14,19 @@ import { PaymentStatus } from '../payments.constants.js';
 @Schema({ timestamps: true, collection: 'payments' })
 export class Payment {
   /** Owner of the booking. Used for the ownership check (ACC-11). */
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  })
   userId: Types.ObjectId;
 
   @Prop({ type: String, enum: ['flight', 'hotel'], required: true })
   bookingType: BookingType;
 
   /** _id of the FlightBooking or HotelBooking (depending on bookingType). */
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
   bookingId: Types.ObjectId;
 
   /** Stripe PaymentIntent id ("pi_..."). The webhook finds the payment by it. */

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { Schema as MongooseSchema, HydratedDocument, Types } from 'mongoose';
 import type {
   BookingType,
   RefundReason,
@@ -16,17 +16,22 @@ import type {
  */
 @Schema({ timestamps: true, collection: 'refunds' })
 export class Refund {
-  @Prop({ type: Types.ObjectId, ref: 'Payment', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Payment', required: true })
   paymentId: Types.ObjectId;
 
   /** Owner of the booking (copied from the payment), for ownership checks. */
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  })
   userId: Types.ObjectId;
 
   @Prop({ type: String, enum: ['flight', 'hotel'], required: true })
   bookingType: BookingType;
 
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
   bookingId: Types.ObjectId;
 
   /**
@@ -47,7 +52,7 @@ export class Refund {
   reason: RefundReason | 'late_payment';
 
   /** User who cancelled; null for system-triggered refunds (FLT-06). */
-  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', default: null })
   requestedBy: Types.ObjectId | null;
 
   /**

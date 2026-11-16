@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { Module } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, NestFactory } from '@nestjs/core';
 import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
@@ -25,6 +25,10 @@ import { FlightsModule } from '../dist/flights/flights.module.js';
 import { HotelsCatalogueModule } from '../dist/hotels/hotels-catalogue.module.js';
 import { FlightEventsService } from '../dist/flights/flight-events.service.js';
 import { FlightsService } from '../dist/flights/flights.service.js';
+import {
+  FLIGHT_BOOKING_HISTORY_READER,
+  PendingFlightBookingHistoryReader,
+} from '../dist/flights/flight-booking-history.interface.js';
 import { HotelsSearchService } from '../dist/hotels/hotels-search.service.js';
 import { loadReferenceData } from '../dist/seed/reference-data.js';
 import { seedData } from '../dist/seed/seed-data.js';
@@ -82,6 +86,19 @@ before(
       binary: { version: '8.2.6' },
       replSet: { count: 1 },
     });
+    // FlightBookingsModule (Omar) binds the real reader in the app; this test only loads the
+    // catalogue, so it gets the "unknown" reader (null -> 501) its history checks expect.
+    class HistoryReaderStub {}
+    Module({
+      providers: [
+        {
+          provide: FLIGHT_BOOKING_HISTORY_READER,
+          useClass: PendingFlightBookingHistoryReader,
+        },
+      ],
+      exports: [FLIGHT_BOOKING_HISTORY_READER],
+    })(HistoryReaderStub);
+    Global()(HistoryReaderStub);
     class TestApplication {}
     Module({
       imports: [
@@ -100,6 +117,7 @@ before(
         AuthModule,
         AirlinesModule,
         AirportsModule,
+        HistoryReaderStub,
         FlightsModule,
         HotelsCatalogueModule,
       ],
