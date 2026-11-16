@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { Schema as MongooseSchema, HydratedDocument, Types } from 'mongoose';
 import type { BookingType } from '../../common/interfaces/index.js';
 
 /** One cancellation tier (FLT-09 / HTL-10). */
@@ -50,13 +50,18 @@ const BaggagePolicySnapshotSchema = SchemaFactory.createForClass(
  */
 @Schema({ timestamps: true, collection: 'policyacceptances' })
 export class PolicyAcceptance {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  })
   userId: Types.ObjectId;
 
   @Prop({ type: String, enum: ['flight', 'hotel'], required: true })
   bookingType: BookingType;
 
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
   bookingId: Types.ObjectId;
 
   /** PAY-02: acceptance is stored with a timestamp. */
