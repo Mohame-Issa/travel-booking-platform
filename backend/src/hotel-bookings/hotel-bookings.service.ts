@@ -1,4 +1,3 @@
-
 import {
   HttpStatus,
   Inject,
@@ -97,7 +96,7 @@ export class HotelBookingsService
 
   onModuleInit(): void {
     this.timer = setInterval(() => void this.sweep(), SWEEP_EVERY_MS);
-    this.timer.unref();
+    this.timer.unref(); // never keeps the process (or tests) alive
   }
 
   onModuleDestroy(): void {
@@ -108,33 +107,23 @@ export class HotelBookingsService
   async create(dto: CreateHotelBookingDto, userId: string) {
     const { start, end, nights } = parseStay(dto.checkInDate, dto.checkOutDate);
     const hotel = await this.hotels.findById(dto.hotelId).lean().exec();
-
     if (!hotel) throw new NotFoundException('Hotel not found');
-
-    if (hotel.status !== ProviderStatus.ACTIVE) {
+    if (hotel.status !== ProviderStatus.ACTIVE)
       throw conflict(
         ErrorCode.PROVIDER_DEACTIVATED,
         'This hotel is not accepting reservations',
       );
-    }
 
     const ids = dto.rooms.map((r) => r.roomId);
-
     const found = await this.rooms
       .find({ _id: { $in: ids }, hotelId: hotel._id })
       .lean()
       .exec();
-
     const byId = new Map(found.map((room) => [String(room._id), room]));
-
     validateGuests(dto.rooms, byId);
-
     const missing = ids.find((id) => !byId.has(id));
-
-    if (missing) {
+    if (missing)
       throw new NotFoundException(`Room ${missing} not found in this hotel`);
-    }
-
     const policy = await this.policies
       .findOne({ hotelId: hotel._id })
       .lean()
@@ -142,38 +131,27 @@ export class HotelBookingsService
 
     return this.connection.transaction(async (session) => {
       await lockRooms(this.rooms, ids, session);
-
-      const currentHotel = await this.hotels
-        .findById(hotel._id)
+      // ACC-15: the hotel may have been deactivated since the check above.
+      const current = await this.hotels
+        .findById(hotel._id, { status: 1 })
         .session(session)
         .lean()
         .exec();
-
-      if (
-        !currentHotel ||
-        currentHotel.status !== ProviderStatus.ACTIVE
-      ) {
+      if (current?.status !== ProviderStatus.ACTIVE)
         throw conflict(
           ErrorCode.PROVIDER_DEACTIVATED,
           'This hotel is not accepting reservations',
         );
-      }
-
       const now = new Date();
-
-      // Re-read room status and prices inside the transaction.
+      // Re-read inside the lock: a concurrent deactivation or occupancy/price edit (HTL-05/06)
+      // must win or lose cleanly, so guests and prices are checked against these rows.
       const active = await this.rooms
         .find({ _id: { $in: ids }, status: ProviderStatus.ACTIVE })
         .session(session)
         .lean()
         .exec();
-
-      for (const room of active) {
-        byId.set(String(room._id), room);
-      }
-
+      for (const room of active) byId.set(String(room._id), room);
       validateGuests(dto.rooms, byId);
-
       const rows = await this.availability
         .find({
           roomId: { $in: ids },
@@ -183,7 +161,6 @@ export class HotelBookingsService
         .session(session)
         .lean()
         .exec();
-
       for (const room of found) {
         const free =
           active.some((a) => String(a._id) === String(room._id)) &&
@@ -193,17 +170,13 @@ export class HotelBookingsService
             end,
             now,
           );
-
-        if (!free) {
+        if (!free)
           throw conflict(
             ErrorCode.ROOM_NOT_AVAILABLE,
             `Room ${room.roomNumber} is not available for the selected dates; nothing was held (HTL-18)`,
           );
-        }
       }
-
       const holdExpiresAt = new Date(+now + HOLD_MS);
-
       const [booking] = await this.bookings.create(
         [
           {
@@ -211,7 +184,6 @@ export class HotelBookingsService
             hotelId: hotel._id,
             rooms: dto.rooms.map((r) => {
               const room = byId.get(r.roomId)!;
-
               return {
                 roomId: room._id,
                 roomNumber: room.roomNumber,
@@ -240,7 +212,6 @@ export class HotelBookingsService
         ],
         { session },
       );
-
       await this.availability.insertMany(
         found.map((room) => ({
           roomId: room._id,
@@ -252,7 +223,6 @@ export class HotelBookingsService
         })),
         { session },
       );
-
       return booking.toObject();
     });
   }
@@ -277,88 +247,68 @@ export class HotelBookingsService
       .populate({ path: 'hotelId', select: 'name address cityId countryCode' })
       .lean()
       .exec();
-
     if (
       !booking ||
       (String(booking.userId) !== user.id && user.role !== UserRole.ADMIN)
-    ) {
+    )
       throw new NotFoundException('Reservation not found');
-    }
-
     return booking;
   }
 
-  /** PAY-01 / HTL-17. Idempotent; 409 when the reservation can no longer be confirmed. */
+  /** PAY-01 / HTL-17. Idempotent; 409 when the reservation can no longer be confirmed (payments then refunds). */
   async confirmBooking({
     bookingId,
     paymentId,
   }: ConfirmBookingInput): Promise<void> {
-    if (!isValidObjectId(bookingId)) {
+    if (!isValidObjectId(bookingId))
       throw new NotFoundException('Reservation not found');
-    }
-
     const confirmed = await this.connection.transaction(async (session) => {
       const booking = await this.bookings
         .findById(bookingId)
         .session(session)
         .exec();
-
-      if (!booking) {
-        throw new NotFoundException('Reservation not found');
-      }
-
+      if (!booking) throw new NotFoundException('Reservation not found');
       if (
         [BookingStatus.CONFIRMED, BookingStatus.COMPLETED].includes(
           booking.status,
         )
-      ) {
+      )
         return null;
-      }
-
-      if (booking.status !== BookingStatus.PENDING_PAYMENT) {
+      if (booking.status !== BookingStatus.PENDING_PAYMENT)
         throw conflict(
           ErrorCode.BOOKING_NOT_CONFIRMABLE,
           `The reservation is ${booking.status} (GEN-11)`,
         );
-      }
-
+      // ACC-15: a hold on a hotel deactivated before payment is not confirmed (payments then refunds).
       const hotel = await this.hotels
-        .findById(booking.hotelId)
+        .findById(booking.hotelId, { status: 1 })
         .session(session)
         .lean()
         .exec();
-
-      if (!hotel || hotel.status !== ProviderStatus.ACTIVE) {
+      if (hotel?.status !== ProviderStatus.ACTIVE)
         throw conflict(
           ErrorCode.BOOKING_NOT_CONFIRMABLE,
-          'The hotel is no longer accepting reservations. The payment cannot be confirmed.',
+          'The hotel is no longer accepting reservations',
         );
-      }
 
       const now = new Date();
-
       // HTL-18: a payment later than the hold (plus webhook latency) is refunded, never confirmed.
       if (
         booking.holdExpiresAt &&
         +now > +booking.holdExpiresAt + CONFIRM_GRACE_MS
-      ) {
+      )
         throw conflict(
           ErrorCode.BOOKING_NOT_CONFIRMABLE,
           'The 10-minute hold expired before payment (HTL-18)',
         );
-      }
-
       const roomIds = booking.rooms.map((r) => r.roomId);
-
       await lockRooms(this.rooms, roomIds, session);
-
       const activeRooms = await this.rooms
         .countDocuments({
           _id: { $in: roomIds },
           status: ProviderStatus.ACTIVE,
         })
         .session(session);
-
       const rows = await this.availability
         .find({
           roomId: { $in: roomIds },
@@ -368,14 +318,11 @@ export class HotelBookingsService
         .session(session)
         .lean()
         .exec();
-
       const mine = (r: { bookingId: unknown }) =>
         String(r.bookingId) === bookingId;
-
       const own = rows.filter(
         (r) => mine(r) && r.kind === RoomAvailabilityKind.HELD,
       );
-
       // Late payment after an expired hold: only confirm if nobody else took or blocked the rooms.
       const stillFree = roomIds.every((roomId) =>
         roomIsFree(
@@ -385,17 +332,15 @@ export class HotelBookingsService
           now,
         ),
       );
-
       if (
         own.length !== roomIds.length ||
         !stillFree ||
         activeRooms !== roomIds.length
-      ) {
+      )
         throw conflict(
           ErrorCode.BOOKING_NOT_CONFIRMABLE,
           'The held rooms are no longer available',
         );
-      }
 
       await this.availability
         .updateMany(
@@ -404,7 +349,6 @@ export class HotelBookingsService
           { session },
         )
         .exec();
-
       booking.set({
         status: BookingStatus.CONFIRMED,
         reference: newReference(),
@@ -412,13 +356,10 @@ export class HotelBookingsService
         confirmedAt: now,
         holdExpiresAt: null,
       });
-
       await booking.save({ session });
-
       return booking;
     });
-
-    if (confirmed) {
+    if (confirmed)
       await this.notifySafely({
         userId: String(confirmed.userId),
         type: 'booking_confirmed',
@@ -430,7 +371,6 @@ export class HotelBookingsService
           reference: confirmed.reference,
         },
       });
-    }
   }
 
   /**
@@ -442,47 +382,37 @@ export class HotelBookingsService
     reason,
   }: ReleaseInventoryInput): Promise<void> {
     if (!isValidObjectId(bookingId)) return;
-
     const expiring = reason !== 'cancelled';
-
     const released = await this.connection.transaction(async (session) => {
       const booking = await this.bookings
         .findById(bookingId)
         .session(session)
         .exec();
-
       if (!booking) return null;
-
       const from = expiring
         ? BookingStatus.PENDING_PAYMENT
         : BookingStatus.CONFIRMED;
-
       const to = expiring ? BookingStatus.EXPIRED : BookingStatus.CANCELLED;
-
-      if (booking.status === to) return null;
-
+      if (booking.status === to) return null; // already released
       if (booking.status !== from) {
+        // A reservation paid in time stays confirmed; nothing to give back.
         if (
           expiring &&
           [BookingStatus.CONFIRMED, BookingStatus.COMPLETED].includes(
             booking.status,
           )
-        ) {
+        )
           return null;
-        }
-
         throw conflict(
           ErrorCode.CONFLICT,
           `A ${booking.status} reservation cannot be ${to.toLowerCase()} (GEN-11)`,
         );
       }
-
       await lockRooms(
         this.rooms,
         booking.rooms.map((r) => r.roomId),
         session,
       );
-
       await this.availability
         .deleteMany(
           {
@@ -494,18 +424,14 @@ export class HotelBookingsService
           { session },
         )
         .exec();
-
       booking.set({
         status: to,
         ...(expiring ? {} : { cancelledAt: new Date() }),
       });
-
       await booking.save({ session });
-
       return booking;
     });
-
-    if (released && expiring) {
+    if (released && expiring)
       await this.notifySafely({
         userId: String(released.userId),
         type: 'payment_failed',
@@ -513,7 +439,6 @@ export class HotelBookingsService
         message: `Payment for your reservation from ${released.checkInDate.toISOString().slice(0, 10)} did not complete in time, so the rooms were released.`,
         data: { bookingType: 'hotel', bookingId, reason },
       });
-    }
   }
 
   /** PAY-01/02/03 read model. */
@@ -521,11 +446,8 @@ export class HotelBookingsService
     bookingId: string,
   ): Promise<BookingPaymentSnapshot | null> {
     if (!isValidObjectId(bookingId)) return null;
-
     const b = await this.bookings.findById(bookingId).lean().exec();
-
     if (!b) return null;
-
     return {
       bookingId: String(b._id),
       userId: String(b.userId),
@@ -552,7 +474,6 @@ export class HotelBookingsService
   /** ACC-12: a Confirmed reservation whose check-out is still ahead. */
   async hasUpcomingConfirmedBookings(userId: string): Promise<boolean> {
     if (!isValidObjectId(userId)) return false;
-
     return !!(await this.bookings.exists({
       userId,
       status: BookingStatus.CONFIRMED,
@@ -561,26 +482,25 @@ export class HotelBookingsService
   }
 
   /**
-   * HTL-18: expire holds nobody paid for.
+   * HTL-18: expire holds nobody paid for (payments also releases its own; release is idempotent).
    * HTL-23 / GEN-11: Confirmed -> Completed once the check-out date has passed.
+   * Public so it can be tested.
    */
   async sweep(now = new Date()): Promise<void> {
     if (this.sweeping) return;
-
     this.sweeping = true;
-
     try {
       const due = await this.bookings
         .find(
           {
             status: BookingStatus.PENDING_PAYMENT,
+            // past the confirm grace, so a late webhook and the sweep cannot disagree
             holdExpiresAt: { $lte: new Date(+now - CONFIRM_GRACE_MS) },
           },
           { _id: 1 },
         )
         .lean()
         .exec();
-
       for (const { _id } of due) {
         try {
           await this.releaseInventory({
@@ -593,11 +513,11 @@ export class HotelBookingsService
           );
         }
       }
-
       await this.bookings
         .updateMany(
           {
             status: BookingStatus.CONFIRMED,
+            // same boundary as HTL-20 "past" and the ACC-12 upcoming check
             checkOutDate: { $lte: now },
           },
           { $set: { status: BookingStatus.COMPLETED } },

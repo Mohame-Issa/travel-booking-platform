@@ -622,6 +622,57 @@ added to AI_RULES.md section 8) and added PLATFORM_CURRENCY = 'EGP' (PAY-04),
 which payments now enforce. I reviewed the diff before merging.
 ================================================
 
+
+=========================================Date: 2026-11-12
+Student: Omar Hisham
+Tool: Claude
+Related Requirement: FLT-19, FLT-21, FLT-22, FLT-23, FLT-25, FLT-26, FLT-29, GEN-11
+Prompt:
+I am Omar Hisham. Study the project PDF, the
+Milestone 1 work split and the requirements sheet, and implement my part (flight
+booking and cancellations) following AI_RULES.md. Here are the interfaces in
+common/interfaces and the flight schemas Yassin merged. Give me every file and its
+code step by step.
+How the output was used:
+Used the generated flight-bookings module (schema, DTOs, service, controllers, module)
+as the base. Reviewed the atomic seat hold (one findOneAndUpdate with a capacity
+filter inside a MongoDB transaction), the status transitions (Pending Payment ->
+Confirmed / Expired / Cancelled) and the cancellation flow. Fixed import paths and
+type imports to match our repo.
+================================================
+================================================
+Date: 2026-11-13
+Student: Omar Hisham
+Tool: Claude
+Related Requirement: FLT-22, PAY-01
+Prompt:
+Nest reports a circular dependency inside REFUND_SERVICE when the app starts.
+Also help me test the payment flow with the Stripe CLI and write a race test that
+fires simultaneous holds at one flight.
+How the output was used:
+Resolved the circular dependency by resolving the refund services lazily through
+ModuleRef. Used the Stripe CLI commands to confirm a test payment and the race
+test script (backend/test/race-test.mjs) to check that only one of 20 simultaneous
+holds succeeds.
+================================================
+================================================
+Date: 2026-11-14
+Student: Omar Hisham
+Tool: Claude
+Related Requirement: HTL-21, FLT-05, FLT-06
+Prompt:
+Mohamed Hashad finished hotel booking and Yassin finished his booking-history
+interface. Write the hotel cancellation endpoints (HTL-21) following Hashad's
+instructions, and bind Yassin's FLIGHT_BOOKING_HISTORY_READER in my module.
+How the output was used:
+Used the generated hotel-bookings/cancellation files (refund preview and cancel through
+the HOTEL_BOOKING_LIFECYCLE and refund tokens) and the hasAnyBooking implementation.
+Removed the placeholder provider from flights.module.ts so the real reader is used.
+================================================
+
+
+
+=======
 ================================================
 Date: 2026-11-12
 Student: Youssef Khafagy
@@ -677,4 +728,26 @@ On #9 it removed two unused imports and documented the error responses. In my
 own area it fixed the reported startup crash: empty optional lines copied from
 .env.example (PORT=, COOKIE_SAMESITE=) now mean "not set" (GEN-13 config),
 with unit tests and a real app start. I reviewed the diffs before merging.
+================================================
+
+================================================
+Date: 2026-11-16
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Check the repo after my teammates' merges and do what is left for my part:
+verify their hotel and flight code against my payment contracts and test the
+whole payment flow end to end.
+
+How the output was used:
+Wrote test/payments.e2e.mjs: real hotel booking, notification, payment and
+refund modules on a disposable MongoDB, fake Stripe API calls, real webhook
+signatures. It covers policies, payment, decline, retry, webhook
+confirmation, replay, cancellation and refund, hold expiry, late payment and
+0% refunds. The test found that @Prop({ type: Types.ObjectId }) is stored as
+Mixed (no casting), so I switched my three schemas to
+MongooseSchema.Types.ObjectId and added a unit test for it. All 61
+integration tests and 163 unit tests pass.
 ================================================

@@ -20,87 +20,11 @@
  *      so do not leave both.
  *
  *   Token                              Owner             Placeholder behaviour
- *   FLIGHT_UPCOMING_BOOKINGS_CHECKER   Omar Hashem       returns false
- *   FLIGHT_BOOKING_LIFECYCLE           Omar Hashem       throws 501
- *   FLIGHT_BOOKING_PAYMENT_READER      Omar Hashem       throws 501
+ *   (none - every shared service is implemented by its owner now)
  */
-import { Global, HttpStatus, Logger, Module } from '@nestjs/common';
-import { ErrorCode } from '../constants/error-codes.js';
-import { ApiException } from '../exceptions/api.exception.js';
-import {
-  BookingLifecycleService,
-  BookingPaymentReader,
-  BookingPaymentSnapshot,
-  FLIGHT_BOOKING_PAYMENT_READER,
-  FLIGHT_BOOKING_LIFECYCLE,
-  FLIGHT_UPCOMING_BOOKINGS_CHECKER,
-  UpcomingConfirmedBookingsChecker,
-} from '../interfaces/index.js';
+import { Global, Module } from '@nestjs/common';
 
-const logger = new Logger('TEMPORARY-PLACEHOLDER');
-
-/** TEMPORARY: replaced by the flight and hotel booking modules. */
-class PlaceholderUpcomingBookingsChecker implements UpcomingConfirmedBookingsChecker {
-  constructor(private readonly token: string) {}
-  async hasUpcomingConfirmedBookings(): Promise<boolean> {
-    logger.warn(
-      `${this.token} not merged yet - assuming the user has NO upcoming bookings`,
-    );
-    return false;
-  }
-}
-
-/** TEMPORARY: replaced by the flight and hotel booking modules. */
-class PlaceholderBookingLifecycle implements BookingLifecycleService {
-  constructor(private readonly token: string) {}
-  confirmBooking(): Promise<void> {
-    return Promise.reject(notMerged(this.token));
-  }
-  releaseInventory(): Promise<void> {
-    return Promise.reject(notMerged(this.token));
-  }
-}
-
-/** TEMPORARY: replaced by the flight and hotel booking modules. */
-class PlaceholderBookingPaymentReader implements BookingPaymentReader {
-  constructor(private readonly token: string) {}
-  getPaymentSnapshot(): Promise<BookingPaymentSnapshot | null> {
-    return Promise.reject(notMerged(this.token));
-  }
-}
-
-function notMerged(token: string): ApiException {
-  return new ApiException(
-    HttpStatus.NOT_IMPLEMENTED,
-    ErrorCode.NOT_IMPLEMENTED,
-    `${token} is not available yet (placeholder)`,
-  );
-}
-
+/** Empty on purpose: add a TEMPORARY stand-in here only if a new shared token needs one. */
 @Global()
-@Module({
-  providers: [
-    {
-      provide: FLIGHT_UPCOMING_BOOKINGS_CHECKER,
-      useValue: new PlaceholderUpcomingBookingsChecker(
-        FLIGHT_UPCOMING_BOOKINGS_CHECKER,
-      ),
-    },
-    {
-      provide: FLIGHT_BOOKING_LIFECYCLE,
-      useValue: new PlaceholderBookingLifecycle(FLIGHT_BOOKING_LIFECYCLE),
-    },
-    {
-      provide: FLIGHT_BOOKING_PAYMENT_READER,
-      useValue: new PlaceholderBookingPaymentReader(
-        FLIGHT_BOOKING_PAYMENT_READER,
-      ),
-    },
-  ],
-  exports: [
-    FLIGHT_UPCOMING_BOOKINGS_CHECKER,
-    FLIGHT_BOOKING_LIFECYCLE,
-    FLIGHT_BOOKING_PAYMENT_READER,
-  ],
-})
+@Module({ providers: [], exports: [] })
 export class PlaceholderIntegrationsModule {}

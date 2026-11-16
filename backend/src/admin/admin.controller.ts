@@ -1,4 +1,3 @@
-
 import {
   Body,
   Controller,
@@ -27,6 +26,7 @@ import {
 import { ProviderType, UserRole } from '../common/constants/roles.js';
 import { CurrentUser, Roles } from '../common/decorators/auth.decorators.js';
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe.js';
 import {
   ApiPaginatedResponse,
   type Paginated,
@@ -38,9 +38,11 @@ import {
 
 import { CreateModeratorDto } from './dto/create-moderator.dto.js';
 import { ListAccountsQueryDto } from './dto/list-accounts-query.dto.js';
+import { AdminBookingResponseDto } from './dto/admin-booking-response.dto.js';
+import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
 import { AdminService } from './admin.service.js';
 
-/** Admin account-management endpoints. */
+/** Admin account and booking management endpoints. */
 @ApiTags('Admin')
 @ApiCookieAuth()
 @Roles(UserRole.ADMIN)
@@ -117,6 +119,30 @@ export class AdminController {
     };
   }
 
+  /** ACC-17: read-only list of all flight and hotel bookings (admin only). */
+  @Get('bookings')
+  @ApiOperation({
+    summary: 'List flight and hotel bookings with filters and pagination',
+  })
+  @ApiPaginatedResponse(AdminBookingResponseDto)
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description: 'Invalid pagination or booking filter query',
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'Authentication required',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'Admin access required',
+  })
+  async listBookings(
+    @Query() query: ListBookingsQueryDto,
+  ): Promise<Paginated<AdminBookingResponseDto>> {
+    return this.adminService.listBookings(query);
+  }
+
   /** ACC-15: Suspend a moderator account. */
   @Patch('moderators/:id/suspend')
   @HttpCode(HttpStatus.OK)
@@ -138,7 +164,7 @@ export class AdminController {
     description: 'Moderator account not found',
   })
   async suspendModerator(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() currentUser: { id: string },
   ): Promise<UserResponseDto> {
     const moderator = await this.adminService.suspendModerator(
@@ -170,7 +196,7 @@ export class AdminController {
     description: 'Moderator account not found',
   })
   async reactivateModerator(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() currentUser: { id: string },
   ): Promise<UserResponseDto> {
     const moderator = await this.adminService.reactivateModerator(
@@ -207,14 +233,10 @@ export class AdminController {
   async deactivateProvider(
     @Param('type', new ParseEnumPipe(ProviderType))
     type: ProviderType,
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() currentUser: { id: string },
   ): Promise<unknown> {
-    return this.adminService.deactivateProvider(
-      currentUser.id,
-      type,
-      id,
-    );
+    return this.adminService.deactivateProvider(currentUser.id, type, id);
   }
 
   /** ACC-15: Reactivate an airline or hotel. */
@@ -243,13 +265,9 @@ export class AdminController {
   async reactivateProvider(
     @Param('type', new ParseEnumPipe(ProviderType))
     type: ProviderType,
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() currentUser: { id: string },
   ): Promise<unknown> {
-    return this.adminService.reactivateProvider(
-      currentUser.id,
-      type,
-      id,
-    );
+    return this.adminService.reactivateProvider(currentUser.id, type, id);
   }
 }

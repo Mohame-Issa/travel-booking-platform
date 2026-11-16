@@ -406,49 +406,40 @@ export class FlightsService implements OnModuleInit, OnModuleDestroy {
       return cabin;
     });
   }
-  
-async details(id: string) {
-  await this.markDeparted();
-
-  const flight = await this.flights.findById(id).lean().exec();
-
-  if (!flight) {
-    throw new NotFoundException('Flight not found');
+  async details(id: string) {
+    await this.markDeparted();
+    const flight = await this.flights.findById(id).lean().exec();
+    if (!flight) throw new NotFoundException('Flight not found');
+    const [airline, origin, destination, cabins, policy] = await Promise.all([
+      // ACC-15: a deactivated airline's flights are hidden (assertActive also checks currency).
+      this.airlines.assertActive(String(flight.airlineId)),
+      this.airports.get(flight.departureAirport),
+      this.airports.get(flight.arrivalAirport),
+      this.cabins
+        .find({ flightId: id })
+        .sort({ price: 1, _id: 1 })
+        .lean()
+        .exec(),
+      this.airlines.policy(String(flight.airlineId)),
+    ]);
+    return Object.assign({}, flight, {
+      airline,
+      origin,
+      destination,
+      departureLocal: localDateTime(flight.departureTime, origin.timeZone),
+      arrivalLocal: localDateTime(flight.arrivalTime, destination.timeZone),
+      durationMinutes: (+flight.arrivalTime - +flight.departureTime) / 60_000,
+      cabins: cabins.map((cabin) =>
+        Object.assign({}, cabin, {
+          seatsRemaining: Math.max(
+            0,
+            cabin.seatCount - cabin.bookedSeats - cabin.heldSeats,
+          ),
+        }),
+      ),
+      policy,
+    });
   }
-
-  const [airline, origin, destination, cabins, policy] = await Promise.all([
-    this.airlines.assertActive(String(flight.airlineId)),
-    this.airports.get(flight.departureAirport),
-    this.airports.get(flight.arrivalAirport),
-    this.cabins
-      .find({ flightId: id })
-      .sort({ price: 1, _id: 1 })
-      .lean()
-      .exec(),
-    this.airlines.policy(String(flight.airlineId)),
-  ]);
-
-  await this.airlines.assertCurrency(String(flight.airlineId));
-
-  return Object.assign({}, flight, {
-    airline,
-    origin,
-    destination,
-    departureLocal: localDateTime(flight.departureTime, origin.timeZone),
-    arrivalLocal: localDateTime(flight.arrivalTime, destination.timeZone),
-    durationMinutes: (+flight.arrivalTime - +flight.departureTime) / 60_000,
-    cabins: cabins.map((cabin) =>
-      Object.assign({}, cabin, {
-        seatsRemaining: Math.max(
-          0,
-          cabin.seatCount - cabin.bookedSeats - cabin.heldSeats,
-        ),
-      }),
-    ),
-    policy,
-  });
-}
-
   async search(query: SearchFlightsQueryDto) {
     // Nada's internal callers receive the same defaults and validation as HTTP consumers.
     query = await createValidationPipe().transform(query, {
