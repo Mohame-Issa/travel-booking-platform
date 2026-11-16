@@ -197,7 +197,10 @@ depend on it.
 
 - `@Schema({ timestamps: true, collection: '...' })`. Use `HydratedDocument<T>`
   for the document type.
-- Reference other documents with `Types.ObjectId` plus `ref: 'ModelName'`.
+- Reference other documents with `@Prop({ type: MongooseSchema.Types.ObjectId, ref: 'ModelName' })`
+  (`import { Schema as MongooseSchema, Types } from 'mongoose'`) and type the field as
+  `Types.ObjectId`. Do **not** write `@Prop({ type: Types.ObjectId })`: with this Mongoose
+  version it silently becomes `Mixed`, so a string id is never cast and queries find nothing.
 - Union and enum props need an explicit type: `@Prop({ type: String, enum: [...] })`.
 - Money: store amounts as numbers in the provider's currency, plus a `currency` field.
 - Dates: store UTC `Date`. Convert to airport local time only for display (GEN-06).

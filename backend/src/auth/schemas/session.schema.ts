@@ -1,5 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import {
+  Schema as MongooseSchema,
+  type HydratedDocument,
+  Types,
+} from 'mongoose';
 
 /**
  * Server-side login session (ACC-06, ACC-19). Collection: "sessions".
@@ -11,7 +15,12 @@ import { HydratedDocument, Types } from 'mongoose';
  */
 @Schema({ timestamps: true, collection: 'sessions' })
 export class Session {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  })
   userId: Types.ObjectId;
 
   @Prop({ required: true })

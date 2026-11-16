@@ -751,3 +751,19 @@ Mixed (no casting), so I switched my three schemas to
 MongooseSchema.Types.ObjectId and added a unit test for it. All 61
 integration tests and 163 unit tests pass.
 ================================================
+Date: 2026-11-16
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: ACC-06, ACC-13, ACC-15, ACC-16, ACC-17, FLT-22, HTL-21, PAY-01..PAY-04
+
+Prompt:
+Review all open pull requests (#12, #13, #15, #16, #17, #18), fix what is
+needed and merge them.
+
+How the output was used:
+Reviewed, tested (unit, integration and a live run on a throwaway database)
+and merged every PR, with review fixes pushed to each branch. Youssef's test
+showed that @Prop({ type: Types.ObjectId }) becomes Mixed; that also broke
+ACC-15's moderator notification, so I fixed the ModeratorAssignment and
+Session schemas, added a unit test and updated AI_RULES.md section 9.
+================================================
