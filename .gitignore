@@ -70,9 +70,6 @@ web_modules/
 .env.*
 !.env.example
 
-# GEN-08 uploaded images (UPLOAD_DIR default); never commit user files
-backend/uploads/
-
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

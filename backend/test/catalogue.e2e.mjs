@@ -260,7 +260,7 @@ test('public registration cannot create an administrator; profile management enf
   await moderator
     .patch(`/api/airlines/${airline.id}`)
     .send({ logoAssetId: 'pending-owned-upload' })
-    .expect(404); // real GEN-08 resolver: unknown asset (was 501 with the pending stub)
+    .expect(501);
 });
 
 test('baggage and cancellation policies enforce limits and unique thresholds', async () => {
@@ -1056,7 +1056,7 @@ test('logo integration: missing adapter returns 501 atomically; resolver receive
   await moderator
     .patch(`/api/airlines/${airline.id}`)
     .send({ name: 'Must not partially save', logoAssetId: 'test-asset' })
-    .expect(404); // real GEN-08 resolver: unknown asset (was 501 with the pending stub)
+    .expect(501);
   assert.equal(
     (await connection.model('Airline').findById(airline.id)).name,
     before.name,

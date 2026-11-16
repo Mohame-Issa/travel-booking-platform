@@ -18,8 +18,6 @@ export type NotificationType =
   | 'booking_confirmed'
   | 'booking_cancelled'
   | 'refund_issued'
-  /** Payment failed or the hold expired before payment (PAY-01, HTL-18, FLT-22). */
-  | 'payment_failed'
   | 'flight_schedule_changed'
   | 'account_suspended'
   | 'account_reactivated'
