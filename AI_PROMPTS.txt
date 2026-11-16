@@ -754,6 +754,8 @@ integration tests and 163 unit tests pass.
 Date: 2026-11-16
 Student: Mohamed Amr
 Tool: Claude Code
+Related Requirement: ACC-06, ACC-13, ACC-15, ACC-16, ACC-17, FLT-22, HTL-21, PAY-01..PAY-04
+
 Prompt:
 Review all open pull requests (#12, #13, #15, #16, #17, #18), fix what is
 needed and merge them.
