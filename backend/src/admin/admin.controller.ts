@@ -1,4 +1,4 @@
-
+import { AdminBookingResponseDto } from './dto/admin-booking-response.dto.js';
 import {
   Body,
   Controller,
@@ -16,6 +16,7 @@ import {
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOperation,
+  ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -34,9 +35,10 @@ import {
 
 import { CreateModeratorDto } from './dto/create-moderator.dto.js';
 import { ListAccountsQueryDto } from './dto/list-accounts-query.dto.js';
+import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
 import { AdminService } from './admin.service.js';
 
-/** Admin account-management endpoints. */
+/** Admin account and booking management endpoints. */
 @ApiTags('Admin')
 @ApiCookieAuth()
 @Roles(UserRole.ADMIN)
@@ -112,4 +114,45 @@ export class AdminController {
       meta: result.meta,
     };
   }
+
+  /** ACC-17: List all flight and hotel bookings with filters and pagination. */
+  @Get('bookings')
+  @ApiOperation({
+    summary: 'List flight and hotel bookings with filters and pagination',
+  })
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description: 'Invalid pagination or booking filter query',
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'Authentication required',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'Admin access required',
+  })
+    /** ACC-17: List flight and hotel bookings with filters and pagination. */
+    @Get('bookings')
+    @ApiOperation({
+      summary: 'List flight and hotel bookings with filters and pagination',
+    })
+    @ApiPaginatedResponse(AdminBookingResponseDto)
+    @ApiBadRequestResponse({
+      type: ErrorResponseDto,
+      description: 'Invalid pagination or booking filter query',
+    })
+    @ApiUnauthorizedResponse({
+      type: ErrorResponseDto,
+      description: 'Authentication required',
+    })
+    @ApiForbiddenResponse({
+      type: ErrorResponseDto,
+      description: 'Admin access required',
+    })
+    async listBookings(
+      @Query() query: ListBookingsQueryDto,
+    ): Promise<Paginated<AdminBookingResponseDto>> {
+      return this.adminService.listBookings(query);
+    }
 }
