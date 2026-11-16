@@ -205,6 +205,11 @@ export class AuthService {
    * ACC-06: revokes the server-side session. Works with either cookie, and
    * even with an expired access token, so logout always succeeds.
    */
+  /** ACC-15 / ACC-16: a suspended account is logged out everywhere at once. */
+  async revokeAllSessionsForUser(userId: string): Promise<void> {
+    await this.sessions.revokeAllForUser(userId);
+  }
+
   async logout(accessToken?: string, refreshToken?: string): Promise<void> {
     let sessionId: string | undefined = refreshToken?.split('.')[0];
     if (!sessionId && accessToken) {

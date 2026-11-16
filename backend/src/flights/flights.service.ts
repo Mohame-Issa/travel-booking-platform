@@ -411,7 +411,8 @@ export class FlightsService implements OnModuleInit, OnModuleDestroy {
     const flight = await this.flights.findById(id).lean().exec();
     if (!flight) throw new NotFoundException('Flight not found');
     const [airline, origin, destination, cabins, policy] = await Promise.all([
-      this.airlines.assertCurrency(String(flight.airlineId)),
+      // ACC-15: a deactivated airline's flights are hidden (assertActive also checks currency).
+      this.airlines.assertActive(String(flight.airlineId)),
       this.airports.get(flight.departureAirport),
       this.airports.get(flight.arrivalAirport),
       this.cabins

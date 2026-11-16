@@ -69,6 +69,9 @@ export class HotelsService {
   /** HTL-02: profile, policy and, when dates are given, the free rooms. */
   async details(id: string, stay: OptionalStayQueryDto) {
     const hotel = await this.findHotel(id);
+    // ACC-15: a deactivated hotel's listing is hidden from guests.
+    if (hotel.status !== ProviderStatus.ACTIVE)
+      throw new NotFoundException('Hotel not found');
     const policy = await this.policies
       .findOne({ hotelId: hotel._id })
       .lean()
