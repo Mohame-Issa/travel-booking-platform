@@ -270,4 +270,62 @@ export class AdminController {
   ): Promise<unknown> {
     return this.adminService.reactivateProvider(currentUser.id, type, id);
   }
+
+  /** ACC-16: Suspend a registered user. */
+  @Patch('users/:id/suspend')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Suspend a registered user' })
+  @ApiOkResponse({
+    description: 'User suspended successfully',
+    type: UserResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'Authentication required',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'Admin access required',
+  })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'User not found',
+  })
+  async suspendUser(
+    @Param('id', ParseObjectIdPipe) userId: string,
+    @CurrentUser() currentUser: { id: string },
+  ): Promise<UserResponseDto> {
+    const user = await this.adminService.suspendUser(currentUser.id, userId);
+
+    return toPublicUser(user);
+  }
+
+  /** ACC-16: Reactivate a suspended registered user. */
+  @Patch('users/:id/reactivate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reactivate a suspended registered user' })
+  @ApiOkResponse({
+    description: 'User reactivated successfully',
+    type: UserResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    type: ErrorResponseDto,
+    description: 'Authentication required',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'Admin access required',
+  })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'User not found',
+  })
+  async reactivateUser(
+    @Param('id', ParseObjectIdPipe) userId: string,
+    @CurrentUser() currentUser: { id: string },
+  ): Promise<UserResponseDto> {
+    const user = await this.adminService.reactivateUser(currentUser.id, userId);
+
+    return toPublicUser(user);
+  }
 }

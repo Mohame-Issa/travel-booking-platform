@@ -658,4 +658,100 @@ export class AdminService {
 
     return moderator;
   }
+
+  /**
+   * ACC-16: Suspend a registered user.
+   */
+  async suspendUser(adminId: string, userId: string): Promise<UserDocument> {
+    const user = await this.findRegisteredUser(userId);
+
+    if (user.status === UserStatus.DEACTIVATED) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.ACCOUNT_DEACTIVATED,
+        'This account has been deactivated',
+      );
+    }
+
+    if (user.status === UserStatus.SUSPENDED) {
+      return user;
+    }
+
+    user.status = UserStatus.SUSPENDED;
+    await user.save();
+
+    await this.auth.revokeAllSessionsForUser(userId);
+
+    await this.audit.record({
+      actorId: adminId,
+      action: 'user.suspended',
+      targetType: 'User',
+      targetId: userId,
+    });
+
+    await this.notifications.notify({
+      userId,
+      type: 'account_suspended',
+      title: 'Account suspended',
+      message:
+        'Your account has been suspended by an administrator. You can no longer log in.',
+    });
+
+    return user;
+  }
+
+  /**
+   * ACC-16: Reactivate a suspended registered user.
+   */
+  async reactivateUser(adminId: string, userId: string): Promise<UserDocument> {
+    const user = await this.findRegisteredUser(userId);
+
+    if (user.status === UserStatus.DEACTIVATED) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.ACCOUNT_DEACTIVATED,
+        'A deactivated account cannot be reactivated through this operation',
+      );
+    }
+
+    if (user.status === UserStatus.ACTIVE) {
+      return user;
+    }
+
+    user.status = UserStatus.ACTIVE;
+    await user.save();
+
+    await this.audit.record({
+      actorId: adminId,
+      action: 'user.reactivated',
+      targetType: 'User',
+      targetId: userId,
+    });
+
+    await this.notifications.notify({
+      userId,
+      type: 'account_reactivated',
+      title: 'Account reactivated',
+      message: 'Your account has been reactivated. You can now log in again.',
+    });
+
+    return user;
+  }
+
+  /**
+   * Ensure the target account is a registered user, not an admin or moderator.
+   */
+  private async findRegisteredUser(userId: string): Promise<UserDocument> {
+    const user = await this.userModel.findById(userId).exec();
+
+    if (!user || user.role !== UserRole.USER) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        ErrorCode.NOT_FOUND,
+        'Registered user account not found',
+      );
+    }
+
+    return user;
+  }
 }
