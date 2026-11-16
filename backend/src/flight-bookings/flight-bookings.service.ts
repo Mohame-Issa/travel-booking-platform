@@ -43,6 +43,7 @@ import {
   type RefundService,
   type ReleaseInventoryInput,
   type UpcomingConfirmedBookingsChecker,
+  type FlightBookingHistoryReader,
 } from './flight-bookings.imports.js';
 
 import { PLATFORM_CURRENCY } from '../common/constants/currencies.js'; // PAY-04
@@ -56,13 +57,12 @@ import {
   ListMyBookingsQueryDto,
 } from './dto/flight-booking.dto.js';
 import {
-  type CsvValue,
   formatLocal,
   generateBookingReference,
   round2,
   toCsv,
+  type CsvValue,
 } from './flight-bookings.utils.js';
-
 export const HOLD_MINUTES = 10; // FLT-22
 const MAX_ACTIVE_HOLDS_PER_USER = 3; // stops one user from hoarding seats
 
@@ -71,7 +71,8 @@ export class FlightBookingsService
   implements
     BookingLifecycleService,
     UpcomingConfirmedBookingsChecker,
-    BookingPaymentReader
+    BookingPaymentReader,
+    FlightBookingHistoryReader
 {
   private readonly logger = new Logger(FlightBookingsService.name);
 
@@ -477,9 +478,12 @@ export class FlightBookingsService
     };
   }
 
-  /** Yassin's history check (bookings of ANY status count). Bind it once his interface is known. */
-  async hasBookingsForFlight(flightId: string): Promise<boolean> {
-    return !!(await this.bookings.exists({ flightId }));
+  /** Yassin's FLIGHT_BOOKING_HISTORY_READER: true if the flight EVER had a booking (any status). */
+  async hasAnyBooking(
+    flightId: string,
+    session: ClientSession,
+  ): Promise<boolean | null> {
+    return !!(await this.bookings.exists({ flightId }).session(session));
   }
 
   // ------------------------------------------------------------ FLT-25: reading

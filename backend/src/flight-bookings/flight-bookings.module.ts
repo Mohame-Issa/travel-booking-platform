@@ -15,6 +15,7 @@ import {
   Flight,
   FlightSchema,
   FlightsModule,
+  FLIGHT_BOOKING_HISTORY_READER,
 } from './flight-bookings.imports.js';
 import { FlightBookingEventsListener } from './flight-booking-events.listener.js';
 import { FlightBookingsController } from './flight-bookings.controller.js';
@@ -51,11 +52,16 @@ import {
       provide: FLIGHT_BOOKING_PAYMENT_READER,
       useExisting: FlightBookingsService,
     },
+    {
+      provide: FLIGHT_BOOKING_HISTORY_READER,
+      useExisting: FlightBookingsService,
+    },
   ],
   exports: [
     FLIGHT_BOOKING_LIFECYCLE,
     FLIGHT_UPCOMING_BOOKINGS_CHECKER,
     FLIGHT_BOOKING_PAYMENT_READER,
+    FLIGHT_BOOKING_HISTORY_READER,
     FlightBookingsService,
   ],
 })

@@ -34,3 +34,6 @@ export { Airport, AirportSchema } from '../airports/schemas/airport.schema.js';
 
 export { ModeratorAssignmentsService } from '../users/moderator-assignments.service.js';
 export type { AuthenticatedUser } from '../common/types/authenticated-user.js';
+
+export { FLIGHT_BOOKING_HISTORY_READER } from '../flights/flight-booking-history.interface.js';
+export type { FlightBookingHistoryReader } from '../flights/flight-booking-history.interface.js';
