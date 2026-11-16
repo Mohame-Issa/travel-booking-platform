@@ -729,3 +729,25 @@ own area it fixed the reported startup crash: empty optional lines copied from
 .env.example (PORT=, COOKIE_SAMESITE=) now mean "not set" (GEN-13 config),
 with unit tests and a real app start. I reviewed the diffs before merging.
 ================================================
+
+================================================
+Date: 2026-11-16
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Check the repo after my teammates' merges and do what is left for my part:
+verify their hotel and flight code against my payment contracts and test the
+whole payment flow end to end.
+
+How the output was used:
+Wrote test/payments.e2e.mjs: real hotel booking, notification, payment and
+refund modules on a disposable MongoDB, fake Stripe API calls, real webhook
+signatures. It covers policies, payment, decline, retry, webhook
+confirmation, replay, cancellation and refund, hold expiry, late payment and
+0% refunds. The test found that @Prop({ type: Types.ObjectId }) is stored as
+Mixed (no casting), so I switched my three schemas to
+MongooseSchema.Types.ObjectId and added a unit test for it. All 61
+integration tests and 163 unit tests pass.
+================================================
