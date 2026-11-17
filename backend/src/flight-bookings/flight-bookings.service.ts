@@ -21,6 +21,7 @@ import {
   Airport,
   ApiException,
   BookingStatus,
+  CabinClass,
   CabinInventory,
   ErrorCode,
   Flight,
@@ -66,6 +67,10 @@ import {
 } from './flight-bookings.utils.js';
 import type { ChangeSeatsDto } from './dto/seat.dto.js';
 import { SeatsService } from './seats.service.js';
+import {
+  CHANGE_AS_BOOKING_STATUS,
+  FlightChangesService,
+} from './flight-changes.service.js';
 export const HOLD_MINUTES = 10; // FLT-22
 const MAX_ACTIVE_HOLDS_PER_USER = 3; // stops one user from hoarding seats
 
@@ -95,6 +100,7 @@ export class FlightBookingsService
     private readonly moduleRef: ModuleRef,
     private readonly moderators: ModeratorAssignmentsService,
     private readonly seats: SeatsService, // FLT-28 (bonus, Youssef Khafagy)
+    private readonly changes: FlightChangesService, // FLT-27 (bonus, Youssef Khafagy)
   ) {}
 
   // Resolved lazily (at call time) to avoid a circular dependency with Youssef's refunds module.
@@ -371,7 +377,12 @@ export class FlightBookingsService
     paymentId,
   }: ConfirmBookingInput): Promise<void> {
     const existing = await this.bookings.findById(bookingId).lean();
-    if (!existing) throw new NotFoundException('Flight booking not found');
+    if (!existing) {
+      // FLT-27: the payment was for the fare difference of a flight change.
+      if (await this.changes.isChange(bookingId))
+        return this.changes.confirmChange({ bookingId, paymentId });
+      throw new NotFoundException('Flight booking not found');
+    }
     if (
       existing.status === BookingStatus.CONFIRMED &&
       existing.paymentId === paymentId
@@ -435,7 +446,12 @@ export class FlightBookingsService
     reason,
   }: ReleaseInventoryInput): Promise<void> {
     const b = await this.bookings.findById(bookingId).lean();
-    if (!b) throw new NotFoundException('Flight booking not found');
+    if (!b) {
+      // FLT-27: an unpaid flight change gives its held seats back.
+      if (await this.changes.isChange(bookingId))
+        return this.changes.releaseInventory({ bookingId, reason });
+      throw new NotFoundException('Flight booking not found');
+    }
     if (b.status === BookingStatus.PENDING_PAYMENT) {
       await this.inTransaction(async (session) => {
         const expired = await this.bookings.findOneAndUpdate(
@@ -470,13 +486,27 @@ export class FlightBookingsService
     bookingId: string,
   ): Promise<BookingPaymentSnapshot | null> {
     const b = await this.bookings.findById(bookingId).lean();
-    if (!b) return null;
-    const policy = await this.policies
-      .findOne({ airlineId: b.airlineId })
-      .lean();
-    const cabin = await this.cabins
-      .findOne({ flightId: b.flightId, cabinClass: b.cabinClass })
-      .lean();
+    if (!b) {
+      // FLT-27 (bonus): the "booking" paid for is a flight change; the user
+      // pays only the fare difference, under the same airline's policies.
+      const c = await this.changes.findById(bookingId);
+      if (!c) return null;
+      return {
+        bookingId: String(c._id),
+        userId: String(c.userId),
+        status: CHANGE_AS_BOOKING_STATUS[c.status],
+        totalAmount: c.amountDue,
+        currency: c.currency,
+        holdExpiresAt: c.holdExpiresAt,
+        startsAt: c.toDepartureTime,
+        policies: await this.policiesFor(
+          c.airlineId,
+          c.toFlightId,
+          c.cabinClass,
+        ),
+        parentBookingId: String(c.bookingId),
+      };
+    }
     return {
       bookingId: String(b._id),
       userId: String(b.userId),
@@ -485,22 +515,33 @@ export class FlightBookingsService
       currency: b.currency,
       holdExpiresAt: b.holdExpiresAt,
       startsAt: b.departureTime,
-      policies: {
-        cancellationTiers: (policy?.cancellationTiers ?? []).map((t) => ({
-          daysBefore: t.daysBefore,
-          refundPercentage: t.refundPercentage,
-        })),
-        baggagePolicy: cabin
-          ? {
-              freeBags: cabin.freeBaggage,
-              maxWeightKgPerBag: cabin.maxBagWeightKg,
-              extraBagPrice: policy?.extraBagPrice ?? 0,
-              maxExtraBags: policy?.maxExtraBags ?? 0,
-            }
-          : null,
-        checkInTime: null,
-        checkOutTime: null,
-      },
+      policies: await this.policiesFor(b.airlineId, b.flightId, b.cabinClass),
+    };
+  }
+
+  /** PAY-02 policies of an airline for one booked cabin (FLT-04, FLT-08, FLT-09). */
+  private async policiesFor(
+    airlineId: Types.ObjectId,
+    flightId: Types.ObjectId,
+    cabinClass: CabinClass,
+  ) {
+    const policy = await this.policies.findOne({ airlineId }).lean();
+    const cabin = await this.cabins.findOne({ flightId, cabinClass }).lean();
+    return {
+      cancellationTiers: (policy?.cancellationTiers ?? []).map((t) => ({
+        daysBefore: t.daysBefore,
+        refundPercentage: t.refundPercentage,
+      })),
+      baggagePolicy: cabin
+        ? {
+            freeBags: cabin.freeBaggage,
+            maxWeightKgPerBag: cabin.maxBagWeightKg,
+            extraBagPrice: policy?.extraBagPrice ?? 0,
+            maxExtraBags: policy?.maxExtraBags ?? 0,
+          }
+        : null,
+      checkInTime: null,
+      checkOutTime: null,
     };
   }
 
@@ -725,7 +766,7 @@ export class FlightBookingsService
     filter: QueryFilter<FlightBooking>,
     by: 'user' | 'provider' | 'system',
   ) {
-    return this.inTransaction(async (session) => {
+    const cancelled = await this.inTransaction(async (session) => {
       const b = await this.bookings.findOneAndUpdate(
         { ...filter, status: BookingStatus.CONFIRMED },
         {
@@ -744,6 +785,9 @@ export class FlightBookingsService
       await this.seats.release(session, b._id); // FLT-28
       return b;
     });
+    // FLT-27: an unpaid change of a cancelled booking is dropped.
+    if (cancelled) await this.changes.discardOpenFor(cancelled._id);
+    return cancelled;
   }
 
   private async issueRefund(
@@ -790,6 +834,8 @@ export class FlightBookingsService
 
   /** FLT-06: confirmed bookings -> Cancelled with 100% refund; holds released. Safe to run twice. */
   async handleFlightCancelled(p: FlightEventPayload): Promise<void> {
+    // FLT-27: unpaid changes TO this flight are dropped (seats released).
+    await this.changes.releaseForFlight(p.flightId);
     const pending = await this.bookings
       .find({ flightId: p.flightId, status: BookingStatus.PENDING_PAYMENT })
       .select('_id')

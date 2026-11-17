@@ -212,6 +212,18 @@ export class SeatsService {
     return this.assign(session, input);
   }
 
+  /** passport -> seat of one owner (booking or pending change). */
+  async seatsOf(
+    session: ClientSession,
+    ownerId: Types.ObjectId,
+  ): Promise<Map<string, string>> {
+    const rows = await this.seats
+      .find({ ownerId }, { passportNumber: 1, seatNumber: 1 })
+      .session(session)
+      .lean();
+    return new Map(rows.map((r) => [r.passportNumber, r.seatNumber]));
+  }
+
   private async takenSeats(
     flightId: Types.ObjectId,
     cabinClass: CabinClass,

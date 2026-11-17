@@ -24,9 +24,10 @@ export class RefundResponseDto {
       'provider_cancellation',
       'flight_cancelled',
       'late_payment',
+      'fare_difference',
     ],
   })
-  reason: RefundReason | 'late_payment';
+  reason: RefundReason | 'late_payment' | 'fare_difference';
 
   @ApiProperty({ enum: ['pending', 'succeeded', 'failed'] })
   status: RefundStatus;
