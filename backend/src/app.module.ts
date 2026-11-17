@@ -32,6 +32,7 @@ import { FlightsModule } from './flights/flights.module.js';
 import { FlightBookingsModule } from './flight-bookings/flight-bookings.module.js';
 import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
 import { AdminModule } from './admin/admin.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
@@ -60,6 +61,7 @@ import { AdminModule } from './admin/admin.module.js';
     AccountEmailModule,
     AccountsModule,
     AdminModule,
+    AnalyticsModule, // BON-01 (bonus)
     // Feature modules are added below this line, one per teammate PR.
     PaymentsModule,
     RefundsModule,

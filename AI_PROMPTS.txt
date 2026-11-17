@@ -1102,3 +1102,25 @@ and never breaks a booking, cancellation or refund; deactivated accounts get
 no emails (ACC-12); creating a moderator (ACC-13) sends an invitation email
 that names the hotel or airline but never contains the temporary password.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BON-01
+
+Prompt:
+Build the optional bonus BON-01: an admin analytics dashboard showing
+bookings and revenue per provider over a selected period.
+
+How the output was used:
+Reviewed and committed GET /api/admin/analytics (admins only) with an
+end-to-end test on hand-made data. Decisions (the requirement defines none):
+a booking counts in the period in which it was confirmed, so pending and
+expired holds never count; gross revenue is the sum of booking totals, refunds
+are the cancellation refunds that did not fail, net = gross - refunds, all in
+EGP; the period is from/to dates in UTC with "to" included, default the last
+30 days; optional filter by airline or hotel; providers are sorted by net
+revenue, 10 per page, with totals for all providers. Read-only aggregations:
+nothing is stored, so the figures are always current.
+================================================
