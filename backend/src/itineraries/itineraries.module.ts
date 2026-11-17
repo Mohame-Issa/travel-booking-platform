@@ -84,6 +84,6 @@ import {
     ItineraryBookingsService,
     ItineraryPdfService,
   ],
-  exports: [MongooseModule, ItinerariesService],
+  exports: [MongooseModule, ItinerariesService, PublicItinerariesService],
 })
 export class ItinerariesModule {}

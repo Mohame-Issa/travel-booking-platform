@@ -267,7 +267,8 @@ export class PublicItinerariesService {
     return itinerary;
   }
 
-  private async visibleFilter(): Promise<QueryFilter<Itinerary>> {
+  /** Also used by favourites (BON-02): what counts as a public itinerary. */
+  async visibleFilter(): Promise<QueryFilter<Itinerary>> {
     const deactivated = await this.users
       .find({ status: UserStatus.DEACTIVATED })
       .distinct('_id')

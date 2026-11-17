@@ -1124,3 +1124,24 @@ EGP; the period is from/to dates in UTC with "to" included, default the last
 revenue, 10 per page, with totals for all providers. Read-only aggregations:
 nothing is stored, so the figures are always current.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BON-02
+
+Prompt:
+Build the optional bonus BON-02: a registered user saves hotels and public
+itineraries to a favourites list and views it.
+
+How the output was used:
+Reviewed and committed POST /api/favourites, GET /api/favourites and DELETE
+/api/favourites/:type/:targetId with end-to-end tests. Decisions: only an
+active hotel or an itinerary that is public right now can be saved, using the
+same visibility rule as public itinerary search, so nothing private leaks
+(private ones answer 404); saving twice is harmless (unique index, tested in
+parallel); the list is newest first, 10 per page, filterable by type, with
+current details; an item that later becomes private or deactivated stays in
+the list as unavailable, without its title, until the user removes it.
+================================================
