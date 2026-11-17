@@ -77,6 +77,10 @@ export const ErrorCode = {
   UNKNOWN_CITY: 'UNKNOWN_CITY',
   ITINERARY_DAY_LIMIT: 'ITINERARY_DAY_LIMIT',
   EXCHANGE_RATES_UNAVAILABLE: 'EXCHANGE_RATES_UNAVAILABLE',
+
+  // Hotel reviews (HTL-23, HTL-24)
+  STAY_NOT_COMPLETED: 'STAY_NOT_COMPLETED',
+  REVIEW_ALREADY_EXISTS: 'REVIEW_ALREADY_EXISTS',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
