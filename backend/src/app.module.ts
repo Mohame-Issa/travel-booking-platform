@@ -19,6 +19,7 @@ import { HealthController } from './health/health.controller.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { ItinerariesModule } from './itineraries/itineraries.module.js';
 import { RefundsModule } from './refunds/refunds.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 import { ReviewsModule } from './reviews/reviews.module.js';
 import { AccountsModule } from './users/accounts.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -59,6 +60,7 @@ import { AdminModule } from './admin/admin.module.js';
     RefundsModule,
     ItinerariesModule,
     ReviewsModule,
+    ReportsModule,
     AirlinesModule,
     AirportsModule,
     FlightsModule,

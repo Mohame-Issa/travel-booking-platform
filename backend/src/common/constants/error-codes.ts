@@ -81,6 +81,10 @@ export const ErrorCode = {
   // Hotel reviews (HTL-23, HTL-24)
   STAY_NOT_COMPLETED: 'STAY_NOT_COMPLETED',
   REVIEW_ALREADY_EXISTS: 'REVIEW_ALREADY_EXISTS',
+
+  // Reports and moderation (GEN-09, GEN-10)
+  ALREADY_REPORTED: 'ALREADY_REPORTED',
+  REPORT_ALREADY_RESOLVED: 'REPORT_ALREADY_RESOLVED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
