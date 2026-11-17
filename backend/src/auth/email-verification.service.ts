@@ -15,11 +15,16 @@ import { EmailTokenPurpose } from './schemas/email-token.schema.js';
  */
 export const VERIFY_EMAIL_TTL_MS = 24 * 60 * 60 * 1000;
 
-/** Link base: the frontend page that calls POST /api/auth/verify-email. */
-export function frontendUrl(config: ConfigService): string {
-  return (
-    config.get<string>('FRONTEND_URL') ?? 'http://localhost:3001'
-  ).replace(/\/$/, '');
+/**
+ * Base of the links in the emails: this backend's public address, because
+ * the links open small pages served by the API itself (account-pages.ts).
+ * BACKEND_URL in .env, else http://localhost:<PORT>.
+ */
+export function backendUrl(config: ConfigService): string {
+  const url =
+    config.get<string>('BACKEND_URL') ??
+    `http://localhost:${config.get<string>('PORT') ?? 3000}`;
+  return url.replace(/\/$/, '');
 }
 
 /**
@@ -49,7 +54,7 @@ export class EmailVerificationService {
         EmailTokenPurpose.VERIFY_EMAIL,
         VERIFY_EMAIL_TTL_MS,
       );
-      const link = `${frontendUrl(this.config)}/verify-email?token=${token}`;
+      const link = `${backendUrl(this.config)}/api/auth/verify-email?token=${token}`;
       await this.mail.send({
         to: user.email,
         subject: 'Verify your email address',

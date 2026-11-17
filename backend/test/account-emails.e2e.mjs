@@ -57,7 +57,7 @@ before(async () => {
         load: [
           () => ({
             JWT_SECRET: 'e2e-only-secret-0123456789abcdef0123',
-            FRONTEND_URL: 'http://front.test',
+            BACKEND_URL: 'http://api.test',
           }),
         ],
       }),
@@ -110,7 +110,10 @@ test('ACC-02: registration emails a verification link; the account starts unveri
   assert.equal(body.emailVerified, false);
   const mail = lastMailTo(email);
   assert.ok(mail, 'verification email sent');
-  assert.match(mail.text, /http:\/\/front\.test\/verify-email\?token=/);
+  assert.match(
+    mail.text,
+    /http:\/\/api\.test\/api\/auth\/verify-email\?token=/,
+  );
   const row = await db
     .collection('emailtokens')
     .findOne({ purpose: 'verify_email' });
@@ -142,6 +145,24 @@ test('ACC-02: the link verifies once; a used or made-up link is refused', async 
     .set('x-test-user', id);
   assert.equal(resend.status, 409);
   assert.equal(resend.body.code, 'EMAIL_ALREADY_VERIFIED');
+});
+
+test('ACC-02: clicking the emailed link verifies and shows a page; a second click shows an error page', async () => {
+  const { email } = await register();
+  const link = new URL(/(http\S+)/.exec(lastMailTo(email).text)[1]);
+  const first = await request(http).get(`${link.pathname}${link.search}`);
+  assert.equal(first.status, 200);
+  assert.match(first.headers['content-type'], /text\/html/);
+  assert.match(first.text, /Email verified/);
+  assert.equal(
+    (await db.collection('users').findOne({ email })).emailVerified,
+    true,
+  );
+
+  const second = await request(http).get(`${link.pathname}${link.search}`);
+  assert.equal(second.status, 400);
+  assert.match(second.text, /Link not valid/);
+  assert.equal((await request(http).get('/api/auth/verify-email')).status, 400); // no token
 });
 
 test('ACC-02: a new link replaces the old one', async () => {
