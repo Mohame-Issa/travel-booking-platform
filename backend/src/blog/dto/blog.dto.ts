@@ -11,6 +11,7 @@ import {
   IsString,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import {
   PaginationMetaDto,
@@ -154,6 +155,17 @@ export class CommentBodyDto {
   body: string;
 }
 
+/** PATCH /api/posts/:id/itinerary (BLG-13): one of my itineraries, or null to remove it. */
+export class AttachItineraryDto {
+  @ApiProperty({
+    nullable: true,
+    description: 'Id of one of my itineraries, or null to detach',
+  })
+  @ValidateIf((o: AttachItineraryDto) => o.itineraryId !== null)
+  @IsMongoId()
+  itineraryId: string | null;
+}
+
 /** POST /api/posts/:id/images: the id from POST /api/uploads (GEN-08). */
 export class AttachPostImageDto {
   @ApiProperty({ description: 'Id from POST /api/uploads' })
@@ -222,6 +234,13 @@ export class PostDetailDto extends PostSummaryDto {
     description: 'First 10 comments; more via GET /api/posts/:id/comments',
   })
   comments: CommentPageDto;
+  @ApiPropertyOptional({
+    type: PublicItinerarySummaryDto,
+    nullable: true,
+    description:
+      'BLG-13: the attached itinerary. Readers only see it while it is public and not hidden; the author always sees it.',
+  })
+  itinerary: PublicItinerarySummaryDto | null;
 }
 
 export class LikeStateDto {

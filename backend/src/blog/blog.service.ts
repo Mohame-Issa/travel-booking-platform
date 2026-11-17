@@ -144,7 +144,7 @@ export class BlogService {
 
   /** GET /api/posts/:id (BLG-02): the public post page. */
   async getPublic(id: string): Promise<PostDetailDto> {
-    return this.detail(await this.findVisible(id));
+    return this.detail(await this.findVisible(id), false);
   }
 
   /** GET /api/posts/mine/:id: my own post in any state (draft, hidden). */
@@ -269,6 +269,70 @@ export class BlogService {
       .lean()
       .exec();
     return this.detail(updated as PostRow);
+  }
+
+  // ---------------------------------------------------------------- BLG-13
+
+  /**
+   * PATCH /api/posts/:id/itinerary (BLG-13, bonus): attach one of MY
+   * itineraries to my post, or detach it with null. Post ownership is
+   * checked by @CheckOwnership; itinerary ownership here.
+   */
+  async setItinerary(
+    id: string,
+    userId: string,
+    itineraryId: string | null,
+  ): Promise<PostDetailDto> {
+    if (itineraryId !== null) {
+      const itinerary = await this.itineraries
+        .findById(itineraryId, { userId: 1 })
+        .lean()
+        .exec();
+      if (!itinerary) throw new NotFoundException('Itinerary not found');
+      if (itinerary.userId.toString() !== userId) {
+        throw new ApiException(
+          HttpStatus.FORBIDDEN,
+          ErrorCode.NOT_RESOURCE_OWNER,
+          'You can only attach your own itinerary',
+        );
+      }
+    }
+    const post = await this.posts
+      .findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            itineraryId: itineraryId ? new Types.ObjectId(itineraryId) : null,
+          },
+        },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    if (!post) throw new NotFoundException('Post not found');
+    return this.detail(post as PostRow);
+  }
+
+  private async attachedItinerary(
+    p: PostRow,
+    author: { id: string; name: string },
+    forAuthor: boolean,
+  ) {
+    if (!p.itineraryId) return null;
+    const filter = forAuthor
+      ? { _id: p.itineraryId }
+      : {
+          _id: p.itineraryId,
+          visibility: ItineraryVisibility.PUBLIC,
+          hiddenAt: null,
+        };
+    const itinerary = await this.itineraries.findOne(filter).lean().exec();
+    // Deleted, private or hidden: readers see no itinerary, never a private one.
+    if (!itinerary) return null;
+    return Object.assign(
+      toItinerarySummary(itinerary as Itinerary & { _id: Types.ObjectId }),
+      { author },
+    );
   }
 
   // -------------------------------------------------------------- author page
@@ -396,9 +460,15 @@ export class BlogService {
     };
   }
 
-  private async detail(p: PostRow): Promise<PostDetailDto> {
+  /**
+   * forAuthor: the author's own views show the attached itinerary whatever its
+   * visibility; public views only while it is public and not hidden (BLG-13).
+   */
+  private async detail(p: PostRow, forAuthor = true): Promise<PostDetailDto> {
     const names = await this.names([p.authorId]);
-    return Object.assign(this.toSummary(p, names), {
+    const summary = this.toSummary(p, names);
+    return Object.assign(summary, {
+      itinerary: await this.attachedItinerary(p, summary.author, forAuthor),
       body: p.body,
       images: p.images.map((i) => ({
         imageId: i.imageId.toString(),

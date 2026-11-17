@@ -84,6 +84,17 @@ export class Post {
   @Prop({ type: Date, default: null })
   hiddenAt: Date | null;
 
+  /**
+   * BLG-13 (bonus): an itinerary of the author attached to the post. Readers
+   * only see it while it is public and not hidden.
+   */
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'Itinerary',
+    default: null,
+  })
+  itineraryId: Types.ObjectId | null;
+
   createdAt: Date;
   updatedAt: Date;
 }

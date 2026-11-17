@@ -38,6 +38,7 @@ import { CheckOwnership } from '../common/guards/ownership.guard.js';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe.js';
 import { BlogService } from './blog.service.js';
 import {
+  AttachItineraryDto,
   AttachPostImageDto,
   AuthorPageDto,
   AuthorPageQueryDto,
@@ -284,6 +285,33 @@ export class PostsController {
     @Body() dto: AttachPostImageDto,
   ): Promise<PostDetailDto> {
     return this.blog.attachImage(id, userId, dto.imageId);
+  }
+
+  @Patch(':id/itinerary')
+  @Roles(UserRole.USER)
+  @ownPost()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary:
+      'Attach one of my itineraries to my post, or remove it (BLG-13, bonus)',
+    description:
+      'Send { "itineraryId": "<id>" } or { "itineraryId": null }. Only your own itinerary. ' +
+      'Readers see it only while it is public and not hidden, so a private itinerary is never shown.',
+  })
+  @ApiOkResponse({ type: PostDetailDto })
+  @ApiBadRequestResponse(bad)
+  @ApiUnauthorizedResponse(unauthorized)
+  @ApiForbiddenResponse(forbidden)
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'Post or itinerary not found',
+  })
+  setItinerary(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: AttachItineraryDto,
+  ): Promise<PostDetailDto> {
+    return this.blog.setItinerary(id, userId, dto.itineraryId);
   }
 
   @Delete(':id/images/:imageId')

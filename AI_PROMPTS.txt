@@ -922,3 +922,20 @@ non-deactivated authors are public; drafts are read through /posts/mine/:id;
 tags are stored trimmed and lower case; images reuse the shared upload
 service; a hidden comment stops counting in the post's score.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BLG-13
+
+Prompt:
+Add the optional BLG-13: an author can attach an itinerary to a post.
+
+How the output was used:
+Reviewed and committed PATCH /api/posts/:id/itinerary with an end-to-end
+test. Decisions: only the author's own itinerary can be attached; readers
+see it only while it is public and not hidden, so a private itinerary can
+never leak through a post; the author always sees what they attached; null
+detaches it.
+================================================

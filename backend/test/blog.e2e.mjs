@@ -99,14 +99,12 @@ after(async () => {
 
 let seq = 0;
 async function user(name, status = 'active') {
-  const u = await db
-    .model('User')
-    .create({
-      name,
-      email: `blog${++seq}-${Date.now()}@youssef-test.example`,
-      passwordHash: 'x',
-      status,
-    });
+  const u = await db.model('User').create({
+    name,
+    email: `blog${++seq}-${Date.now()}@youssef-test.example`,
+    passwordHash: 'x',
+    status,
+  });
   return String(u._id);
 }
 const as = (u) => ({ 'x-test-user': u });
@@ -394,23 +392,19 @@ test('author page: name, join date, published posts, public itineraries (BLG-12)
   const sara = await user('Sara Page');
   const pub = await publish(sara, { title: 'Public post' });
   await api.post('/posts', sara, { title: 'Draft post', body: 'x' });
-  await db
-    .model('Itinerary')
-    .create({
-      userId: sara,
-      title: 'Public trip',
-      countries: ['EG'],
-      startDate: new Date('2026-12-01T00:00:00Z'),
-      visibility: 'public',
-    });
-  await db
-    .model('Itinerary')
-    .create({
-      userId: sara,
-      title: 'Private trip',
-      countries: ['EG'],
-      startDate: new Date('2026-12-01T00:00:00Z'),
-    });
+  await db.model('Itinerary').create({
+    userId: sara,
+    title: 'Public trip',
+    countries: ['EG'],
+    startDate: new Date('2026-12-01T00:00:00Z'),
+    visibility: 'public',
+  });
+  await db.model('Itinerary').create({
+    userId: sara,
+    title: 'Private trip',
+    countries: ['EG'],
+    startDate: new Date('2026-12-01T00:00:00Z'),
+  });
 
   const page = await api.get(`/authors/${sara}`);
   assert.equal(page.status, 200, JSON.stringify(page.body));
@@ -445,4 +439,88 @@ test('deleting a post removes its comments and likes (BLG-04)', async () => {
   );
   assert.equal(await db.model('Like').countDocuments({ postId: post.id }), 0);
   assert.equal((await api.get(`/posts/${post.id}`)).status, 404);
+});
+
+test('attach my itinerary to my post; readers see it only while public (BLG-13)', async () => {
+  const sara = await user('Sara Trip');
+  const post = await publish(sara, { title: 'Our Egypt trip' });
+  const mk = (owner, visibility) =>
+    db
+      .model('Itinerary')
+      .create({
+        userId: owner,
+        title: `It ${visibility}`,
+        countries: ['EG'],
+        startDate: new Date('2026-12-01T00:00:00Z'),
+        visibility,
+      });
+  const priv = await mk(sara, 'private');
+  const someoneElses = await mk(await user('Other'), 'public');
+
+  assert.equal(
+    (
+      await api.patch(`/posts/${post.id}/itinerary`, sara, {
+        itineraryId: String(someoneElses._id),
+      })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+  assert.equal(
+    (
+      await api.patch(`/posts/${post.id}/itinerary`, sara, {
+        itineraryId: String(new Types.ObjectId()),
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await api.patch(`/posts/${post.id}/itinerary`, sara, {})).body.code,
+    'VALIDATION_FAILED',
+  );
+  assert.equal(
+    (
+      await api.patch(`/posts/${post.id}/itinerary`, await user('Hacker'), {
+        itineraryId: null,
+      })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+
+  const attached = await api.patch(`/posts/${post.id}/itinerary`, sara, {
+    itineraryId: String(priv._id),
+  });
+  assert.equal(attached.status, 200, JSON.stringify(attached.body));
+  assert.equal(
+    attached.body.itinerary.id,
+    String(priv._id),
+    'the author sees it',
+  );
+  assert.equal(attached.body.itinerary.author.name, 'Sara Trip');
+  assert.equal(
+    (await api.get(`/posts/${post.id}`)).body.itinerary,
+    null,
+    'private: readers see no itinerary',
+  );
+
+  await db
+    .model('Itinerary')
+    .updateOne({ _id: priv._id }, { visibility: 'public' });
+  assert.equal(
+    (await api.get(`/posts/${post.id}`)).body.itinerary.title,
+    'It private',
+    'public now: readers see it',
+  );
+  await db
+    .model('Itinerary')
+    .updateOne({ _id: priv._id }, { hiddenAt: new Date() });
+  assert.equal(
+    (await api.get(`/posts/${post.id}`)).body.itinerary,
+    null,
+    'hidden by an admin',
+  );
+
+  const detached = await api.patch(`/posts/${post.id}/itinerary`, sara, {
+    itineraryId: null,
+  });
+  assert.equal(detached.body.itinerary, null);
 });
