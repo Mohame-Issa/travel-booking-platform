@@ -6,6 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { BlogService } from '../blog/blog.service.js';
+import { Comment } from '../blog/schemas/comment.schema.js';
+import { Post, PostStatus } from '../blog/schemas/post.schema.js';
 import { ErrorCode } from '../common/constants/error-codes.js';
 import type { Paginated } from '../common/dto/pagination.dto.js';
 import { ApiException } from '../common/exceptions/api.exception.js';
@@ -38,11 +41,20 @@ const DUPLICATE_KEY = 11000;
 
 type ReportRow = Report & { _id: Types.ObjectId };
 
+/** Model name of each content type, for the audit log. */
+const MODEL_NAME: Record<ReportTargetType, string> = {
+  [ReportTargetType.POST]: 'Post',
+  [ReportTargetType.COMMENT]: 'Comment',
+  [ReportTargetType.REVIEW]: 'Review',
+  [ReportTargetType.ITINERARY]: 'Itinerary',
+};
+
 /**
  * Reports (GEN-09) and admin moderation (GEN-10). Taken over from Omar
  * Rashed's part. Hidden content keeps existing for its author and admins but
- * disappears from public search / review lists; deleted content is gone.
- * Every admin action is written to Mohamed Hashad's audit log (GEN-07).
+ * disappears from public lists; deleted content is gone. Deletes reuse each
+ * owner module's own delete logic. Every admin action is written to Mohamed
+ * Hashad's audit log (GEN-07).
  */
 @Injectable()
 export class ReportsService {
@@ -50,24 +62,19 @@ export class ReportsService {
     @InjectModel(Report.name) private readonly reports: Model<Report>,
     @InjectModel(Itinerary.name) private readonly itineraries: Model<Itinerary>,
     @InjectModel(Review.name) private readonly reviews: Model<Review>,
+    @InjectModel(Post.name) private readonly posts: Model<Post>,
+    @InjectModel(Comment.name) private readonly comments: Model<Comment>,
     @Inject(AUDIT_SERVICE) private readonly audit: AuditService,
     private readonly itinerariesService: ItinerariesService,
     private readonly reviewsService: ReviewsService,
+    private readonly blog: BlogService,
   ) {}
 
   /** POST /api/reports (GEN-09): with a reason, at most once per item per user. */
   async create(reporterId: string, dto: CreateReportDto): Promise<ReportDto> {
-    // You can only report what you can see: a public itinerary or a visible review.
-    const visible =
-      dto.targetType === ReportTargetType.ITINERARY
-        ? await this.itineraries.exists({
-            _id: dto.targetId,
-            visibility: ItineraryVisibility.PUBLIC,
-            hiddenAt: null,
-          })
-        : await this.reviews.exists({ _id: dto.targetId, hiddenAt: null });
-    if (!visible) throw new NotFoundException(`${dto.targetType} not found`);
-
+    if (!(await this.isVisible(dto.targetType, dto.targetId))) {
+      throw new NotFoundException(`${dto.targetType} not found`);
+    }
     try {
       const report = await this.reports.create({
         reporterId: new Types.ObjectId(reporterId),
@@ -121,9 +128,7 @@ export class ReportsService {
         `This report is already ${report.status}`,
       );
     }
-    const type = report.targetType;
     const targetId = report.targetId.toString();
-
     if (action === 'dismiss') {
       await this.close({ _id: report._id }, ReportStatus.DISMISSED, adminId);
       await this.audit.record({
@@ -133,9 +138,9 @@ export class ReportsService {
         targetId: id,
       });
     } else if (action === 'hide') {
-      await this.setHidden(type, targetId, true, adminId);
+      await this.setHidden(report.targetType, targetId, true, adminId);
     } else {
-      await this.deleteContent(type, targetId, adminId);
+      await this.deleteContent(report.targetType, targetId, adminId);
     }
     return this.toDto(
       (await this.reports.findById(id).lean().exec()) as ReportRow,
@@ -153,35 +158,25 @@ export class ReportsService {
     adminId: string,
   ): Promise<void> {
     const set = { $set: { hiddenAt: hidden ? new Date() : null } };
-    const doc =
-      type === ReportTargetType.ITINERARY
-        ? await this.itineraries
-            .findByIdAndUpdate(id, set, { new: true })
-            .lean()
-            .exec()
-        : await this.reviews
-            .findByIdAndUpdate(id, set, { new: true })
-            .lean()
-            .exec();
+    const doc = await this.updateHidden(type, id, set);
     if (!doc) throw new NotFoundException(`${type} not found`);
-    // A hidden review no longer counts in the hotel rating (and counts again when shown).
+    // A hidden review stops counting in the hotel rating (HTL-23) ...
     if (type === ReportTargetType.REVIEW)
       await this.reviewsService.recalculate((doc as Review).hotelId);
+    // ... and a hidden comment in the post's comment count and score (BLG-09).
+    if (type === ReportTargetType.COMMENT)
+      await this.blog.recount((doc as Comment).postId);
     if (hidden)
       await this.closeOpenFor(type, id, ReportStatus.CONTENT_HIDDEN, adminId);
     await this.audit.record({
       actorId: adminId,
       action: `${type}.${hidden ? 'hidden' : 'unhidden'}`,
-      targetType: type === ReportTargetType.REVIEW ? 'Review' : 'Itinerary',
+      targetType: MODEL_NAME[type],
       targetId: id,
     });
   }
 
-  /**
-   * DELETE /api/admin/content/:type/:id (GEN-10). Uses the owners' own delete
-   * logic, so an itinerary goes with its days/activities/budgets and a
-   * review's hotel rating is recalculated.
-   */
+  /** DELETE /api/admin/content/:type/:id (GEN-10), using each module's own delete. */
   async deleteContent(
     type: ReportTargetType,
     id: string,
@@ -189,14 +184,74 @@ export class ReportsService {
   ): Promise<void> {
     if (type === ReportTargetType.ITINERARY)
       await this.itinerariesService.remove(id);
-    else await this.reviewsService.remove(id);
+    else if (type === ReportTargetType.REVIEW)
+      await this.reviewsService.remove(id);
+    else if (type === ReportTargetType.POST) await this.blog.remove(id);
+    else await this.blog.removeComment(id);
     await this.closeOpenFor(type, id, ReportStatus.CONTENT_DELETED, adminId);
     await this.audit.record({
       actorId: adminId,
       action: `${type}.deleted`,
-      targetType: type === ReportTargetType.REVIEW ? 'Review' : 'Itinerary',
+      targetType: MODEL_NAME[type],
       targetId: id,
     });
+  }
+
+  // ---------------------------------------------------------------- internals
+
+  /** GEN-09: only content the reporter can see can be reported. */
+  private async isVisible(
+    type: ReportTargetType,
+    id: string,
+  ): Promise<boolean> {
+    switch (type) {
+      case ReportTargetType.ITINERARY:
+        return !!(await this.itineraries.exists({
+          _id: id,
+          visibility: ItineraryVisibility.PUBLIC,
+          hiddenAt: null,
+        }));
+      case ReportTargetType.REVIEW:
+        return !!(await this.reviews.exists({ _id: id, hiddenAt: null }));
+      case ReportTargetType.POST:
+        return !!(await this.posts.exists({
+          _id: id,
+          status: PostStatus.PUBLISHED,
+          hiddenAt: null,
+        }));
+      default: {
+        const c = await this.comments
+          .findOne({ _id: id, hiddenAt: null }, { postId: 1 })
+          .lean()
+          .exec();
+        return (
+          !!c &&
+          !!(await this.posts.exists({
+            _id: c.postId,
+            status: PostStatus.PUBLISHED,
+            hiddenAt: null,
+          }))
+        );
+      }
+    }
+  }
+
+  private updateHidden(
+    type: ReportTargetType,
+    id: string,
+    set: object,
+  ): Promise<unknown> {
+    const opts = { new: true } as const;
+    switch (type) {
+      case ReportTargetType.ITINERARY:
+        return this.itineraries.findByIdAndUpdate(id, set, opts).lean().exec();
+      case ReportTargetType.REVIEW:
+        return this.reviews.findByIdAndUpdate(id, set, opts).lean().exec();
+      case ReportTargetType.POST:
+        return this.posts.findByIdAndUpdate(id, set, opts).lean().exec();
+      default:
+        return this.comments.findByIdAndUpdate(id, set, opts).lean().exec();
+    }
   }
 
   private closeOpenFor(
@@ -249,17 +304,8 @@ export class ReportsService {
     type: ReportTargetType,
     id: Types.ObjectId,
   ): Promise<ReportTargetDto> {
-    const doc =
-      type === ReportTargetType.ITINERARY
-        ? await this.itineraries
-            .findById(id, { title: 1, userId: 1, hiddenAt: 1 })
-            .lean()
-            .exec()
-        : await this.reviews
-            .findById(id, { comment: 1, rating: 1, userId: 1, hiddenAt: 1 })
-            .lean()
-            .exec();
-    if (!doc)
+    const row = await this.preview(type, id);
+    if (!row)
       return {
         type,
         id: id.toString(),
@@ -268,17 +314,66 @@ export class ReportsService {
         preview: null,
         authorId: null,
       };
-    const preview =
-      type === ReportTargetType.ITINERARY
-        ? (doc as Itinerary).title
-        : `${(doc as Review).rating}/5 ${(doc as Review).comment}`.trim();
-    return {
-      type,
-      id: id.toString(),
-      exists: true,
-      hidden: doc.hiddenAt !== null,
-      preview,
-      authorId: doc.userId.toString(),
-    };
+    return { type, id: id.toString(), exists: true, ...row };
+  }
+
+  private async preview(
+    type: ReportTargetType,
+    id: Types.ObjectId,
+  ): Promise<{ hidden: boolean; preview: string; authorId: string } | null> {
+    switch (type) {
+      case ReportTargetType.ITINERARY: {
+        const d = await this.itineraries
+          .findById(id, { title: 1, userId: 1, hiddenAt: 1 })
+          .lean()
+          .exec();
+        return (
+          d && {
+            hidden: d.hiddenAt !== null,
+            preview: d.title,
+            authorId: d.userId.toString(),
+          }
+        );
+      }
+      case ReportTargetType.REVIEW: {
+        const d = await this.reviews
+          .findById(id, { comment: 1, rating: 1, userId: 1, hiddenAt: 1 })
+          .lean()
+          .exec();
+        return (
+          d && {
+            hidden: d.hiddenAt !== null,
+            preview: `${d.rating}/5 ${d.comment}`.trim(),
+            authorId: d.userId.toString(),
+          }
+        );
+      }
+      case ReportTargetType.POST: {
+        const d = await this.posts
+          .findById(id, { title: 1, authorId: 1, hiddenAt: 1 })
+          .lean()
+          .exec();
+        return (
+          d && {
+            hidden: d.hiddenAt !== null,
+            preview: d.title,
+            authorId: d.authorId.toString(),
+          }
+        );
+      }
+      default: {
+        const d = await this.comments
+          .findById(id, { body: 1, authorId: 1, hiddenAt: 1 })
+          .lean()
+          .exec();
+        return (
+          d && {
+            hidden: d.hiddenAt !== null,
+            preview: d.body,
+            authorId: d.authorId.toString(),
+          }
+        );
+      }
+    }
   }
 }

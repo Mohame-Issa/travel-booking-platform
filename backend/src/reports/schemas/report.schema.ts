@@ -6,11 +6,12 @@ import {
 } from 'mongoose';
 
 /**
- * Content that can be reported and moderated (GEN-09, GEN-10).
- * Posts and comments are not included: the blog module was dropped for this
- * team (TA email, 16 November), so they do not exist.
+ * Content that can be reported and moderated (GEN-09, GEN-10). Posts and
+ * comments belong to the blog, which is bonus scope for this team.
  */
 export enum ReportTargetType {
+  POST = 'post',
+  COMMENT = 'comment',
   REVIEW = 'review',
   ITINERARY = 'itinerary',
 }
@@ -22,7 +23,7 @@ export enum ReportStatus {
   CONTENT_DELETED = 'content_deleted',
 }
 
-/** A user's report of a review or itinerary (GEN-09). Collection: "reports". */
+/** A user's report of a post, comment, review or itinerary (GEN-09). Collection: "reports". */
 @Schema({ timestamps: true, collection: 'reports' })
 export class Report {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
