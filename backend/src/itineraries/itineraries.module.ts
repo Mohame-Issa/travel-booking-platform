@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ReferenceDataModule } from '../seed/reference-data.module.js';
+import { ActivitiesController } from './activities.controller.js';
+import { ActivitiesService } from './activities.service.js';
 import { ItinerariesController } from './itineraries.controller.js';
+import { ItineraryDaysController } from './itinerary-days.controller.js';
+import { ItineraryDaysService } from './itinerary-days.service.js';
 import { ItinerariesService } from './itineraries.service.js';
 import { Activity, ActivitySchema } from './schemas/activity.schema.js';
 import {
@@ -39,8 +43,12 @@ import {
       { name: ExchangeRate.name, schema: ExchangeRateSchema },
     ]),
   ],
-  controllers: [ItinerariesController],
-  providers: [ItinerariesService],
+  controllers: [
+    ItinerariesController,
+    ItineraryDaysController,
+    ActivitiesController,
+  ],
+  providers: [ItinerariesService, ItineraryDaysService, ActivitiesService],
   exports: [MongooseModule, ItinerariesService],
 })
 export class ItinerariesModule {}

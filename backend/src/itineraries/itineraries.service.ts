@@ -13,6 +13,9 @@ import type {
   ItinerarySummaryDto,
   UpdateItineraryDto,
 } from './dto/itinerary.dto.js';
+import { toActivityDto } from './activities.service.js';
+import { buildCityGroups } from './city-groups.js';
+import type { ActivityDto } from './dto/day.dto.js';
 import { dayDate, parseIsoDate, toIsoDate } from './itinerary-dates.js';
 import { Activity } from './schemas/activity.schema.js';
 import { BudgetEntry } from './schemas/budget-entry.schema.js';
@@ -72,22 +75,38 @@ export class ItinerariesService {
     };
   }
 
-  /** GET /api/itineraries/:id (ITN-03). */
+  /** GET /api/itineraries/:id (ITN-03): days, their activities and city groups. */
   async getDetail(id: string): Promise<ItineraryDetailDto> {
     const itinerary = await this.findOrFail(id);
-    const days = await this.days
-      .find({ itineraryId: itinerary._id })
-      .sort({ dayNumber: 1 })
-      .lean()
-      .exec();
+    const [days, activities] = await Promise.all([
+      this.days
+        .find({ itineraryId: itinerary._id })
+        .sort({ dayNumber: 1 })
+        .lean()
+        .exec(),
+      this.activities
+        .find({ itineraryId: itinerary._id })
+        .sort({ createdAt: 1 })
+        .lean()
+        .exec(),
+    ]);
+    const byDay = new Map<string, ActivityDto[]>();
+    for (const a of activities) {
+      const key = a.dayId.toString();
+      byDay.set(key, [...(byDay.get(key) ?? []), toActivityDto(a)]);
+    }
     const dayRows = days.map((d) => ({
       id: d._id.toString(),
       dayNumber: d.dayNumber,
       date: dayDate(itinerary.startDate, d.dayNumber),
       cityId: d.cityId,
       notes: d.notes,
+      activities: (byDay.get(d._id.toString()) ?? []).sort(byTime),
     }));
-    return Object.assign(toSummary(itinerary), { days: dayRows });
+    return Object.assign(toSummary(itinerary), {
+      days: dayRows,
+      groups: buildCityGroups(itinerary.startDate, days),
+    });
   }
 
   /**
@@ -215,4 +234,12 @@ export function toSummary(i: ItineraryRow): ItinerarySummaryDto {
       : null,
     updatedAt: i.updatedAt,
   };
+}
+
+/** ITN-10: activities by time; those without a time come last, in creation order. */
+function byTime(a: ActivityDto, b: ActivityDto): number {
+  if (a.time === b.time) return 0;
+  if (a.time === null) return 1;
+  if (b.time === null) return -1;
+  return a.time.localeCompare(b.time);
 }

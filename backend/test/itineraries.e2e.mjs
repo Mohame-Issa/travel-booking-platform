@@ -18,6 +18,7 @@ import { RolesGuard } from '../dist/common/guards/roles.guard.js';
 import { createValidationPipe } from '../dist/common/pipes/validation.pipe.js';
 import { ItinerariesModule } from '../dist/itineraries/itineraries.module.js';
 import { UploadsModule } from '../dist/uploads/uploads.module.js';
+import { UploadsService } from '../dist/uploads/uploads.service.js';
 import { UsersModule } from '../dist/users/users.module.js';
 
 const newUser = () => String(new Types.ObjectId());
@@ -40,7 +41,7 @@ class TestAuthGuard {
   }
 }
 
-let mongo, app, db, http;
+let mongo, app, db, http, uploads;
 
 before(async () => {
   mongo = await MongoMemoryReplSet.create({
@@ -73,6 +74,7 @@ before(async () => {
   await app.init();
   http = app.getHttpServer();
   db = app.get(getConnectionToken());
+  uploads = app.get(UploadsService);
   for (const m of Object.values(db.models)) await m.init();
   // Reference data the itinerary rules rely on (GEN-12): same ids as Countries.csv / Cities.csv.
   await db.model('Country').create([
@@ -82,6 +84,7 @@ before(async () => {
   await db.model('City').create([
     { _id: 'cairo', cityId: 'cairo', name: 'Cairo', countryCode: 'EG' },
     { _id: 'dubai', cityId: 'dubai', name: 'Dubai', countryCode: 'AE' },
+    { _id: 'luxor', cityId: 'luxor', name: 'Luxor', countryCode: 'EG' },
   ]);
 });
 
@@ -256,44 +259,36 @@ test('delete removes days, activities, budgets and transport; other itineraries 
   const it = await createItinerary(owner);
   const keep = await createItinerary(owner, { title: 'Keep me' });
   for (const target of [it.id, keep.id]) {
-    const day = await db
-      .model('ItineraryDay')
-      .create({
-        itineraryId: target,
-        userId: owner,
-        dayNumber: 1,
-        cityId: 'cairo',
-      });
-    await db
-      .model('Activity')
-      .create({
-        itineraryId: target,
-        dayId: day._id,
-        userId: owner,
-        name: 'Pyramids',
-      });
-    await db
-      .model('BudgetEntry')
-      .create({
-        itineraryId: target,
-        dayId: day._id,
-        userId: owner,
-        category: 'food',
-        amount: 100,
-        currency: 'EGP',
-      });
-    await db
-      .model('TransportCost')
-      .create({
-        itineraryId: target,
-        dayId: day._id,
-        userId: owner,
-        mode: 'train',
-        fromCityId: 'cairo',
-        toCityId: 'cairo',
-        amount: 50,
-        currency: 'EGP',
-      });
+    const day = await db.model('ItineraryDay').create({
+      itineraryId: target,
+      userId: owner,
+      dayNumber: 1,
+      cityId: 'cairo',
+    });
+    await db.model('Activity').create({
+      itineraryId: target,
+      dayId: day._id,
+      userId: owner,
+      name: 'Pyramids',
+    });
+    await db.model('BudgetEntry').create({
+      itineraryId: target,
+      dayId: day._id,
+      userId: owner,
+      category: 'food',
+      amount: 100,
+      currency: 'EGP',
+    });
+    await db.model('TransportCost').create({
+      itineraryId: target,
+      dayId: day._id,
+      userId: owner,
+      mode: 'train',
+      fromCityId: 'cairo',
+      toCityId: 'cairo',
+      amount: 50,
+      currency: 'EGP',
+    });
   }
 
   assert.equal((await api.del(`/itineraries/${it.id}`, owner)).status, 204);
@@ -316,4 +311,327 @@ test('delete removes days, activities, budgets and transport; other itineraries 
   }
   assert.equal((await api.get(`/itineraries/${it.id}`, owner)).status, 404);
   assert.equal((await api.get(`/itineraries/${keep.id}`, owner)).status, 200);
+});
+
+// ------------------------------------------------------------------ step 2
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+const upload = async (userId) =>
+  (await uploads.store({ buffer: PNG, size: PNG.length }, userId)).id;
+
+async function withDays(owner, ...cities) {
+  const it = await createItinerary(owner);
+  let detail;
+  for (const cityId of cities) {
+    const res = await api.post(`/itineraries/${it.id}/days`, owner, { cityId });
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+    detail = res.body;
+  }
+  return detail ?? (await api.get(`/itineraries/${it.id}`, owner)).body;
+}
+const summary = (detail) =>
+  detail.days.map((d) => `${d.dayNumber}:${d.cityId}:${d.date}`);
+
+test('add days: sequential numbers, derived dates, city list, groups (ITN-05, ITN-09)', async () => {
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo', 'cairo', 'luxor');
+  assert.deepEqual(summary(detail), [
+    '1:cairo:2026-12-01',
+    '2:cairo:2026-12-02',
+    '3:luxor:2026-12-03',
+  ]);
+  assert.equal(detail.dayCount, 3);
+  assert.equal(detail.endDate, '2026-12-03');
+  assert.deepEqual(
+    detail.groups.map((g) => [g.cityId, g.dayCount, g.startDate, g.endDate]),
+    [
+      ['cairo', 2, '2026-12-01', '2026-12-02'],
+      ['luxor', 1, '2026-12-03', '2026-12-03'],
+    ],
+  );
+  const bad = await api.post(`/itineraries/${detail.id}/days`, owner, {
+    cityId: 'atlantis',
+  });
+  assert.equal(bad.body.code, 'UNKNOWN_CITY');
+  const noCity = await api.post(`/itineraries/${detail.id}/days`, owner, {});
+  assert.equal(noCity.body.code, 'VALIDATION_FAILED');
+  assert.equal(
+    (
+      await api.post(`/itineraries/${detail.id}/days`, newUser(), {
+        cityId: 'cairo',
+      })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+});
+
+test('at most 60 days, and parallel adds never duplicate a number (ITN-05)', async () => {
+  const owner = newUser();
+  const it = await createItinerary(owner);
+  const results = await Promise.all(
+    Array.from({ length: 6 }, () =>
+      api.post(`/itineraries/${it.id}/days`, owner, { cityId: 'cairo' }),
+    ),
+  );
+  assert.ok(results.every((r) => r.status === 201));
+  const numbers = (
+    await db.model('ItineraryDay').find({ itineraryId: it.id }).lean()
+  )
+    .map((d) => d.dayNumber)
+    .sort((a, b) => a - b);
+  assert.deepEqual(numbers, [1, 2, 3, 4, 5, 6]);
+
+  await db.model('Itinerary').updateOne({ _id: it.id }, { dayCount: 60 });
+  const full = await api.post(`/itineraries/${it.id}/days`, owner, {
+    cityId: 'cairo',
+  });
+  assert.equal(full.body.code, 'ITINERARY_DAY_LIMIT');
+});
+
+test('edit a day; a day of another itinerary is 404 (ITN-05)', async () => {
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo');
+  const other = await withDays(owner, 'dubai');
+  const dayId = detail.days[0].id;
+  const edited = await api.patch(
+    `/itineraries/${detail.id}/days/${dayId}`,
+    owner,
+    { cityId: 'luxor', notes: 'Temples' },
+  );
+  assert.equal(edited.status, 200);
+  assert.equal(edited.body.days[0].cityId, 'luxor');
+  assert.equal(edited.body.days[0].notes, 'Temples');
+  assert.equal(
+    (
+      await api.patch(
+        `/itineraries/${detail.id}/days/${other.days[0].id}`,
+        owner,
+        { notes: 'x' },
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await api.patch(`/itineraries/${detail.id}/days/${dayId}`, newUser(), {
+        notes: 'x',
+      })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+});
+
+test('delete a day: its activities go, later days renumbered and dates move back (ITN-07)', async () => {
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo', 'luxor', 'dubai');
+  const luxor = detail.days[1].id;
+  await api.post(`/itineraries/${detail.id}/days/${luxor}/activities`, owner, {
+    name: 'Karnak',
+  });
+  await db
+    .model('BudgetEntry')
+    .create({
+      itineraryId: detail.id,
+      dayId: luxor,
+      userId: owner,
+      category: 'food',
+      amount: 10,
+      currency: 'EGP',
+    });
+
+  const after = await api.del(`/itineraries/${detail.id}/days/${luxor}`, owner);
+  assert.equal(after.status, 200);
+  assert.deepEqual(summary(after.body), [
+    '1:cairo:2026-12-01',
+    '2:dubai:2026-12-02',
+  ]);
+  assert.equal(after.body.dayCount, 2);
+  assert.equal(await db.model('Activity').countDocuments({ dayId: luxor }), 0);
+  assert.equal(
+    await db.model('BudgetEntry').countDocuments({ dayId: luxor }),
+    0,
+  );
+  assert.equal(
+    (await api.del(`/itineraries/${detail.id}/days/${luxor}`, owner)).status,
+    404,
+  );
+});
+
+test('reorder: move a day, renumber, dates and groups follow, activities stay with their day (ITN-08)', async () => {
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo', 'cairo', 'luxor');
+  const luxor = detail.days[2].id;
+  await api.post(`/itineraries/${detail.id}/days/${luxor}/activities`, owner, {
+    name: 'Valley of the Kings',
+  });
+
+  const moved = await api.patch(
+    `/itineraries/${detail.id}/days/reorder`,
+    owner,
+    { dayId: luxor, position: 1 },
+  );
+  assert.equal(moved.status, 200, JSON.stringify(moved.body));
+  assert.deepEqual(summary(moved.body), [
+    '1:luxor:2026-12-01',
+    '2:cairo:2026-12-02',
+    '3:cairo:2026-12-03',
+  ]);
+  assert.equal(moved.body.days[0].activities[0].name, 'Valley of the Kings');
+  assert.deepEqual(
+    moved.body.groups.map((g) => [g.cityId, g.dayCount]),
+    [
+      ['luxor', 1],
+      ['cairo', 2],
+    ],
+  );
+
+  const tooFar = await api.patch(
+    `/itineraries/${detail.id}/days/reorder`,
+    owner,
+    { dayId: luxor, position: 4 },
+  );
+  assert.equal(tooFar.body.code, 'VALIDATION_FAILED');
+  assert.equal(
+    (
+      await api.patch(`/itineraries/${detail.id}/days/reorder`, newUser(), {
+        dayId: luxor,
+        position: 2,
+      })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+});
+
+test('activities: create, order by time, edit, clear, delete, owner only (ITN-10)', async () => {
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo');
+  const dayUrl = `/itineraries/${detail.id}/days/${detail.days[0].id}/activities`;
+  const late = (
+    await api.post(dayUrl, owner, {
+      name: 'Dinner cruise',
+      time: '20:00',
+      cost: 900,
+      currency: 'egp',
+    })
+  ).body;
+  const early = (
+    await api.post(dayUrl, owner, { name: 'Pyramids', time: '08:30' })
+  ).body;
+  const loose = (await api.post(dayUrl, owner, { name: 'Shopping' })).body;
+  assert.equal(late.currency, 'EGP');
+  assert.equal(
+    (await api.post(dayUrl, owner, { name: 'x', cost: 10 })).body.code,
+    'VALIDATION_FAILED',
+  );
+  assert.equal(
+    (await api.post(dayUrl, owner, { name: 'x', cost: -1, currency: 'EGP' }))
+      .body.code,
+    'VALIDATION_FAILED',
+  );
+  assert.equal(
+    (await api.post(dayUrl, owner, { name: 'x', time: '25:00' })).body.code,
+    'VALIDATION_FAILED',
+  );
+
+  const names = (
+    await api.get(`/itineraries/${detail.id}`, owner)
+  ).body.days[0].activities.map((a) => a.name);
+  assert.deepEqual(names, ['Pyramids', 'Dinner cruise', 'Shopping']);
+
+  const edited = await api.patch(`/activities/${late.id}`, owner, {
+    time: null,
+    cost: null,
+    currency: null,
+    description: 'Nile',
+  });
+  assert.equal(edited.status, 200);
+  assert.deepEqual(
+    [
+      edited.body.time,
+      edited.body.cost,
+      edited.body.currency,
+      edited.body.description,
+    ],
+    [null, null, null, 'Nile'],
+  );
+  assert.equal(
+    (await api.patch(`/activities/${early.id}`, owner, { cost: 5 })).body.code,
+    'VALIDATION_FAILED',
+  );
+  assert.equal(
+    (await api.patch(`/activities/${early.id}`, newUser(), { name: 'hack' }))
+      .body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+  assert.equal(
+    (await api.del(`/activities/${loose.id}`, newUser())).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+  assert.equal((await api.del(`/activities/${loose.id}`, owner)).status, 204);
+  assert.equal(
+    (await api.patch(`/activities/${loose.id}`, owner, { name: 'x' })).status,
+    404,
+  );
+});
+
+test('activity images through the shared upload service, max 5 (ITN-12, GEN-08)', async () => {
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo');
+  const act = (
+    await api.post(
+      `/itineraries/${detail.id}/days/${detail.days[0].id}/activities`,
+      owner,
+      { name: 'Museum' },
+    )
+  ).body;
+
+  const ids = [];
+  for (let i = 0; i < 6; i++) ids.push(String(await upload(owner)));
+  for (let i = 0; i < 5; i++) {
+    const res = await api.post(`/activities/${act.id}/images`, owner, {
+      imageId: ids[i],
+    });
+    assert.equal(res.status, 201, JSON.stringify(res.body));
+  }
+  const sixth = await api.post(`/activities/${act.id}/images`, owner, {
+    imageId: ids[5],
+  });
+  assert.equal(sixth.body.code, 'IMAGE_LIMIT_REACHED');
+
+  const someoneElses = String(await upload(newUser()));
+  assert.equal(
+    (
+      await api.post(`/activities/${act.id}/images`, owner, {
+        imageId: someoneElses,
+      })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+
+  const shown = (await api.get(`/itineraries/${detail.id}`, owner)).body.days[0]
+    .activities[0].images;
+  assert.equal(shown.length, 5);
+  assert.match(shown[0].url, /^\/api\/uploads\/files\//);
+
+  const removed = await api.del(
+    `/activities/${act.id}/images/${ids[0]}`,
+    owner,
+  );
+  assert.equal(removed.body.images.length, 4);
+  // the freed slot can be used again
+  assert.equal(
+    (await api.post(`/activities/${act.id}/images`, owner, { imageId: ids[5] }))
+      .status,
+    201,
+  );
+  assert.equal(
+    (
+      await api.post(`/activities/${act.id}/images`, newUser(), {
+        imageId: ids[0],
+      })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
 });

@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto.js';
 import { ItineraryVisibility } from '../schemas/itinerary.schema.js';
+import { ActivityDto, CityGroupDto } from './day.dto.js';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -125,9 +126,20 @@ export class ItineraryDayDto {
   date: string;
   @ApiProperty({ example: 'cairo' }) cityId: string;
   @ApiProperty() notes: string;
+  @ApiProperty({
+    type: [ActivityDto],
+    description: 'ITN-10, ordered by time (activities without a time last)',
+  })
+  activities: ActivityDto[];
 }
 
 /** ITN-03 full details (days, activities and budgets are added by later steps). */
+/** ITN-03 full details: days with their activities, plus city groups (ITN-09). */
 export class ItineraryDetailDto extends ItinerarySummaryDto {
   @ApiProperty({ type: [ItineraryDayDto] }) days: ItineraryDayDto[];
+  @ApiProperty({
+    type: [CityGroupDto],
+    description: 'ITN-09: consecutive days in the same city',
+  })
+  groups: CityGroupDto[];
 }
