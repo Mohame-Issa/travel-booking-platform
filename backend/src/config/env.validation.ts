@@ -74,6 +74,31 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   FXRATES_API_KEY?: string;
+
+  /**
+   * ACC-02 / ACC-07 (bonus): SMTP of a TEST inbox (e.g. Mailtrap). All
+   * optional: without SMTP_HOST a free Ethereal test inbox is used and each
+   * email is logged with a link to read it.
+   */
+  @IsOptional()
+  @IsString()
+  SMTP_HOST?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_PORT?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_USER?: string;
+
+  @IsOptional()
+  @IsString()
+  SMTP_PASS?: string;
+
+  @IsOptional()
+  @IsString()
+  MAIL_FROM?: string;
 }
 
 export function validateEnv(

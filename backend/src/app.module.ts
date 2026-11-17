@@ -4,6 +4,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { Connection } from 'mongoose';
 import { AuthModule } from './auth/auth.module.js';
+import { AccountEmailModule } from './auth/account-email.module.js';
+import { MailModule } from './mail/mail.module.js';
 // Mohamed Hashad: shared services (GEN-01/07/08); kept apart from other PRs' import lines
 import { AuditModule } from './audit/audit.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -54,6 +56,8 @@ import { AdminModule } from './admin/admin.module.js';
 
     UsersModule,
     AuthModule,
+    MailModule, // ACC-02 / ACC-07 (bonus)
+    AccountEmailModule,
     AccountsModule,
     AdminModule,
     // Feature modules are added below this line, one per teammate PR.
