@@ -1,6 +1,16 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { FlightsModule } from '../flights/flights.module.js';
+import { HotelsCatalogueModule } from '../hotels/hotels-catalogue.module.js';
 import { ReferenceDataModule } from '../seed/reference-data.module.js';
+import {
+  BudgetEntriesController,
+  TransportCostsController,
+} from './budget-items.controller.js';
+import { BudgetsService } from './budgets.service.js';
+import { ExchangeRatesService } from './exchange-rates.service.js';
+import { ItineraryBudgetController } from './itinerary-budget.controller.js';
+import { ItinerarySearchService } from './itinerary-search.service.js';
 import { ActivitiesController } from './activities.controller.js';
 import { ActivitiesService } from './activities.service.js';
 import { ItinerariesController } from './itineraries.controller.js';
@@ -33,7 +43,9 @@ import {
  */
 @Module({
   imports: [
-    ReferenceDataModule, // Country and City lists (GEN-12)
+    ReferenceDataModule, // Country, City and Airport lists (GEN-12)
+    FlightsModule, // Yassin's flight search, reused by ITN-26
+    HotelsCatalogueModule, // Yassin's hotel search, reused by ITN-25
     MongooseModule.forFeature([
       { name: Itinerary.name, schema: ItinerarySchema },
       { name: ItineraryDay.name, schema: ItineraryDaySchema },
@@ -47,8 +59,18 @@ import {
     ItinerariesController,
     ItineraryDaysController,
     ActivitiesController,
+    ItineraryBudgetController,
+    BudgetEntriesController,
+    TransportCostsController,
   ],
-  providers: [ItinerariesService, ItineraryDaysService, ActivitiesService],
+  providers: [
+    ItinerariesService,
+    ItineraryDaysService,
+    ActivitiesService,
+    BudgetsService,
+    ExchangeRatesService,
+    ItinerarySearchService,
+  ],
   exports: [MongooseModule, ItinerariesService],
 })
 export class ItinerariesModule {}

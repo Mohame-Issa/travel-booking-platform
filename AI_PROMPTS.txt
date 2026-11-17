@@ -812,3 +812,26 @@ it we found that @CheckOwnership only works on methods, not on the
 controller class, so it is placed on every route and tested with another
 user on every route.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-14, ITN-16, ITN-18, ITN-09, ITN-25, ITN-26
+
+Prompt:
+Finish Nada's itinerary part: budget entries and transport costs, a budget
+summary converted to the user's currency with FXRatesAPI rates fetched once a
+day and cached (falling back to cached rates when the API is down), group
+subtotals, and hotel/flight search from an itinerary reusing Yassin's search.
+
+How the output was used:
+Reviewed and committed the budgets, exchange-rate and itinerary-search
+services, controllers, DTOs and end-to-end tests (FXRatesAPI stubbed in
+tests, and one real call checked by hand). Decisions: totals are computed on
+every read so deleting or moving days always gives correct totals; rates are
+stored against USD so any pair works; FXRatesAPI is only called when a
+conversion is needed, at most once per day; the optional FXRATES_API_KEY
+stays in backend/.env; hotel and flight search reuse Yassin's services
+instead of copying them.
+================================================

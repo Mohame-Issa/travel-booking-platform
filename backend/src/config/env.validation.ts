@@ -66,6 +66,14 @@ export class EnvironmentVariables {
     message: 'must be a Stripe webhook secret (whsec_...)',
   })
   STRIPE_WEBHOOK_SECRET?: string;
+
+  /**
+   * Optional FXRatesAPI key (ITN-18). The free tier works without one; if set,
+   * it is sent as a header from the backend only.
+   */
+  @IsOptional()
+  @IsString()
+  FXRATES_API_KEY?: string;
 }
 
 export function validateEnv(

@@ -17,7 +17,9 @@ import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import { CheckOwnership } from '../common/guards/ownership.guard.js';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe.js';
 import { ActivitiesService } from './activities.service.js';
+import { BudgetsService } from './budgets.service.js';
 import { CreateActivityDto } from './dto/activity.dto.js';
+import { BudgetEntryDto, CreateBudgetEntryDto } from './dto/budget.dto.js';
 import {
   ActivityDto,
   AddDayDto,
@@ -56,6 +58,7 @@ export class ItineraryDaysController {
     private readonly days: ItineraryDaysService,
     private readonly itineraries: ItinerariesService,
     private readonly activities: ActivitiesService,
+    private readonly budgets: BudgetsService,
   ) {}
 
   @Post()
@@ -161,5 +164,25 @@ export class ItineraryDaysController {
     @Body() dto: CreateActivityDto,
   ): Promise<ActivityDto> {
     return this.activities.create(id, dayId, dto);
+  }
+
+  @Post(':dayId/budgets')
+  @CheckOwnership({ model: Itinerary.name })
+  @ApiOperation({
+    summary: 'Add a budget entry to a day (ITN-14)',
+    description:
+      'Category food, accommodation, in_city_transport or activities; amount >= 0 in a supported currency.',
+  })
+  @ApiCreatedResponse({ type: BudgetEntryDto })
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description: 'VALIDATION_FAILED',
+  })
+  addBudget(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('dayId', ParseObjectIdPipe) dayId: string,
+    @Body() dto: CreateBudgetEntryDto,
+  ): Promise<BudgetEntryDto> {
+    return this.budgets.createEntry(id, dayId, dto);
   }
 }
