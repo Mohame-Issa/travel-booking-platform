@@ -857,3 +857,24 @@ one transaction that credits the original author ("Deleted user" if
 deactivated); activity images are not copied because an upload belongs to
 one activity.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: HTL-23, HTL-24, ACC-12
+
+Prompt:
+Build the missing hotel reviews (Omar Rashed's mandatory part): one rating and
+optional review per completed reservation, edit and delete, hotel average
+rating recalculated, and the public list of a hotel's reviews.
+
+How the output was used:
+Reviewed and committed the reviews module and end-to-end tests on real
+reservations. Decisions: a stay counts as completed when its status is
+Completed or its check-out date has passed; one review per reservation is
+enforced by a unique index; the average rating and count are recalculated
+from the visible reviews after every change, so they cannot drift; hidden
+reviews (admin moderation) do not count; deactivated authors show as
+"Deleted user".
+================================================
