@@ -10,7 +10,7 @@
     "build": "nest build",
     "seed": "npm run build && node --env-file-if-exists=.env dist/seed/run-seed.js",
     "seed:check": "npm run build && node dist/seed/run-seed.js --check",
-    "test:integration": "npm run build && node --test --test-concurrency=1 test/phase1.e2e.mjs test/catalogue.e2e.mjs test/hotel-bookings.e2e.mjs test/omar-fixtures.e2e.mjs test/payments.e2e.mjs test/itineraries.e2e.mjs test/reviews.e2e.mjs test/reports.e2e.mjs test/blog.e2e.mjs",
+    "test:integration": "npm run build && node --test --test-concurrency=1 test/phase1.e2e.mjs test/catalogue.e2e.mjs test/hotel-bookings.e2e.mjs test/omar-fixtures.e2e.mjs test/payments.e2e.mjs test/itineraries.e2e.mjs test/reviews.e2e.mjs test/reports.e2e.mjs test/blog.e2e.mjs test/flight-seats-changes.e2e.mjs",
     "format": "prettier --write \"src/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

@@ -9,6 +9,8 @@ export class Passenger {
   @Prop({ required: true, trim: true, uppercase: true }) passportNumber: string;
   @Prop({ default: 0, min: 0 }) extraBags: number;
   @Prop({ default: 0, min: 0 }) baggageFee: number;
+  /** FLT-28 (bonus): seat on the booked flight, e.g. "12C". */
+  @Prop({ type: String }) seatNumber?: string;
 }
 export const PassengerSchema = SchemaFactory.createForClass(Passenger);
 

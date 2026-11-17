@@ -960,3 +960,27 @@ Confirmed or Completed bookings can be linked, a hotel counts as
 accommodation and a flight as intercity transport, and a booking cancelled
 later stops counting; the PDF reuses pdfkit like Omar Hashem's e-ticket.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: FLT-28
+
+Prompt:
+Build the unbuilt optional bonus FLT-28 (seat selection). The requirement only
+says "allow seat selection", so I chose the layout: a simple seat map from each
+cabin's seat count, rows of 6 seats A-F, one seat per passenger, picked or
+assigned automatically, no extra fee.
+
+How the output was used:
+Reviewed and committed a public seat map (GET /api/flights/:id/seats), an
+optional seatNumber per passenger when holding seats, and PATCH
+/api/flight-bookings/:id/seats to move passengers, with end-to-end tests.
+Decisions: the seat counters (FLT-22) still decide availability, seat
+numbers only decide WHICH seat; the layout is computed from the seat count,
+never stored; a unique index on flight + cabin + seat means two parallel
+bookings can never get the same seat (tested with 6 at once); seats are
+freed in the same transaction as an expired hold or a cancellation; the seat
+appears on the e-ticket and the passenger CSV.
+================================================

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -23,6 +23,7 @@ import {
   CabinClass,
   PaginationQueryDto,
 } from '../flight-bookings.imports.js';
+import { SEAT_NUMBER_PATTERN } from '../seat-map.js';
 
 export const MAX_PASSENGERS = 9;
 
@@ -45,6 +46,19 @@ export class PassengerDto {
   @IsInt()
   @Min(0)
   extraBags?: number;
+  @ApiPropertyOptional({
+    example: '12C',
+    description:
+      'FLT-28 (bonus): chosen seat (see GET /api/flights/:id/seats). Left out = first free seat.',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  @Matches(SEAT_NUMBER_PATTERN, {
+    message: 'seatNumber must look like 12C (row, then a letter A-F)',
+  })
+  seatNumber?: string;
 }
 
 /** Used by POST /flight-bookings (summary) and POST /flight-bookings/hold (reserve). */
