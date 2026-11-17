@@ -17,6 +17,10 @@ import request from 'supertest';
 import { BlogModule } from '../dist/blog/blog.module.js';
 import { AllExceptionsFilter } from '../dist/common/filters/all-exceptions.filter.js';
 import { RolesGuard } from '../dist/common/guards/roles.guard.js';
+import {
+  FLIGHT_BOOKING_PAYMENT_READER,
+  HOTEL_BOOKING_PAYMENT_READER,
+} from '../dist/common/interfaces/index.js';
 import { createValidationPipe } from '../dist/common/pipes/validation.pipe.js';
 import {
   FLIGHT_BOOKING_HISTORY_READER,
@@ -54,6 +58,22 @@ Module({
 })(HistoryReaderStub);
 Global()(HistoryReaderStub);
 
+class BookingReaderStub {}
+Module({
+  providers: [
+    {
+      provide: FLIGHT_BOOKING_PAYMENT_READER,
+      useValue: { getPaymentSnapshot: async () => null },
+    },
+    {
+      provide: HOTEL_BOOKING_PAYMENT_READER,
+      useValue: { getPaymentSnapshot: async () => null },
+    },
+  ],
+  exports: [FLIGHT_BOOKING_PAYMENT_READER, HOTEL_BOOKING_PAYMENT_READER],
+})(BookingReaderStub);
+Global()(BookingReaderStub);
+
 let mongo, app, db, http, uploads;
 
 before(async () => {
@@ -74,6 +94,7 @@ before(async () => {
       UsersModule,
       UploadsModule,
       HistoryReaderStub,
+      BookingReaderStub,
       BlogModule,
     ],
     providers: [
@@ -445,15 +466,13 @@ test('attach my itinerary to my post; readers see it only while public (BLG-13)'
   const sara = await user('Sara Trip');
   const post = await publish(sara, { title: 'Our Egypt trip' });
   const mk = (owner, visibility) =>
-    db
-      .model('Itinerary')
-      .create({
-        userId: owner,
-        title: `It ${visibility}`,
-        countries: ['EG'],
-        startDate: new Date('2026-12-01T00:00:00Z'),
-        visibility,
-      });
+    db.model('Itinerary').create({
+      userId: owner,
+      title: `It ${visibility}`,
+      countries: ['EG'],
+      startDate: new Date('2026-12-01T00:00:00Z'),
+      visibility,
+    });
   const priv = await mk(sara, 'private');
   const someoneElses = await mk(await user('Other'), 'public');
 

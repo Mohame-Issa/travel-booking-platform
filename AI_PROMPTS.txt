@@ -939,3 +939,24 @@ see it only while it is public and not hidden, so a private itinerary can
 never leak through a post; the author always sees what they attached; null
 detaches it.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: HTL-26, ITN-27, ITN-28
+
+Prompt:
+Add the three optional bonuses in the parts I now own: hotel moderators reply
+to reviews, booked flights and hotels linked to itinerary days feeding the
+budget, and exporting an itinerary as PDF.
+
+How the output was used:
+Reviewed and committed the three features with end-to-end tests. Decisions:
+only the moderator assigned to the review's hotel can reply (shared
+assertCanManage), and replying again replaces the reply; linked bookings are
+read through the same booking-reader contract payments use, only my own
+Confirmed or Completed bookings can be linked, a hotel counts as
+accommodation and a flight as intercity transport, and a booking cancelled
+later stops counting; the PDF reuses pdfkit like Omar Hashem's e-ticket.
+================================================

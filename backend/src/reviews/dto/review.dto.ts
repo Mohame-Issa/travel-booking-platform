@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Max,
@@ -49,6 +50,21 @@ export class UpdateReviewDto {
   comment?: string;
 }
 
+/** POST /api/reviews/:id/reply (HTL-26, bonus). */
+export class ReplyDto {
+  @ApiProperty({ example: 'Thank you for staying with us!', maxLength: 1000 })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1000) // same limit as the review itself (HTL-23)
+  body: string;
+}
+
+export class ReviewReplyDto {
+  @ApiProperty({ example: 'Thank you for staying with us!' }) body: string;
+  @ApiProperty({ type: String, format: 'date-time' }) repliedAt: Date;
+}
+
 export class ListReviewsQueryDto extends PaginationQueryDto {}
 
 export class ReviewAuthorDto {
@@ -66,6 +82,12 @@ export class ReviewDto {
   @ApiProperty({ example: 4 }) rating: number;
   @ApiProperty() comment: string;
   @ApiProperty({ type: ReviewAuthorDto }) author: ReviewAuthorDto;
+  @ApiPropertyOptional({
+    type: ReviewReplyDto,
+    nullable: true,
+    description: "The hotel's reply (HTL-26)",
+  })
+  reply: ReviewReplyDto | null;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt: Date;
   @ApiProperty({ type: String, format: 'date-time' }) updatedAt: Date;
 }

@@ -21,6 +21,10 @@ import {
   FLIGHT_BOOKING_HISTORY_READER,
   PendingFlightBookingHistoryReader,
 } from '../dist/flights/flight-booking-history.interface.js';
+import {
+  FLIGHT_BOOKING_PAYMENT_READER,
+  HOTEL_BOOKING_PAYMENT_READER,
+} from '../dist/common/interfaces/index.js';
 import { ExchangeRatesService } from '../dist/itineraries/exchange-rates.service.js';
 import { ItinerariesModule } from '../dist/itineraries/itineraries.module.js';
 import { UploadsModule } from '../dist/uploads/uploads.module.js';
@@ -61,6 +65,21 @@ Module({
 })(HistoryReaderStub);
 Global()(HistoryReaderStub);
 
+// Booking readers (Omar Hashem / Mohamed Hashad) backed by a table the tests fill (ITN-27).
+const fakeBookings = new Map(); // bookingId -> snapshot
+const fakeReader = {
+  getPaymentSnapshot: async (id) => fakeBookings.get(String(id)) ?? null,
+};
+class BookingReaderStub {}
+Module({
+  providers: [
+    { provide: FLIGHT_BOOKING_PAYMENT_READER, useValue: fakeReader },
+    { provide: HOTEL_BOOKING_PAYMENT_READER, useValue: fakeReader },
+  ],
+  exports: [FLIGHT_BOOKING_PAYMENT_READER, HOTEL_BOOKING_PAYMENT_READER],
+})(BookingReaderStub);
+Global()(BookingReaderStub);
+
 let mongo, app, db, http, uploads, fx;
 
 before(async () => {
@@ -81,6 +100,7 @@ before(async () => {
       UsersModule,
       UploadsModule,
       HistoryReaderStub,
+      BookingReaderStub,
       ItinerariesModule,
     ],
     providers: [
@@ -1095,14 +1115,12 @@ test('flights to the first day city reuse flight search with itinerary dates (IT
 // ------------------------------------------------------- ITN-21 public itineraries
 let userSeq = 0;
 async function makeUser(name, status = 'active') {
-  const u = await db
-    .model('User')
-    .create({
-      name,
-      email: `itn21-${++userSeq}-${Date.now()}@youssef-test.example`,
-      passwordHash: 'x',
-      status,
-    });
+  const u = await db.model('User').create({
+    name,
+    email: `itn21-${++userSeq}-${Date.now()}@youssef-test.example`,
+    passwordHash: 'x',
+    status,
+  });
   return String(u._id);
 }
 const publish = (id, owner) =>
@@ -1260,5 +1278,160 @@ test('clone: private, independent copy of days, activities, budgets, transport; 
     (await api.get(`/itineraries/${clone.id}`, omar)).body.clonedFrom
       .authorName,
     'Deleted user',
+  );
+});
+
+// ------------------------------------------------------- ITN-27, ITN-28 (bonus)
+test('link my confirmed bookings to days; they feed the budget until cancelled (ITN-27)', async () => {
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo', 'luxor');
+  const [d1, d2] = detail.days.map((d) => d.id);
+  const snap = (userId, status, totalAmount) => ({
+    bookingId: 'x',
+    userId,
+    status,
+    totalAmount,
+    currency: 'EGP',
+    holdExpiresAt: null,
+    startsAt: new Date(),
+    policies: {},
+  });
+  const hotelId = String(new Types.ObjectId());
+  const flightId = String(new Types.ObjectId());
+  const pendingId = String(new Types.ObjectId());
+  const othersId = String(new Types.ObjectId());
+  fakeBookings.set(hotelId, snap(owner, 'Confirmed', 3000));
+  fakeBookings.set(flightId, snap(owner, 'Completed', 2000));
+  fakeBookings.set(pendingId, snap(owner, 'Pending Payment', 999));
+  fakeBookings.set(othersId, snap(newUser(), 'Confirmed', 500));
+
+  const url = `/itineraries/${detail.id}/bookings`;
+  const h = await api.post(url, owner, {
+    bookingType: 'hotel',
+    bookingId: hotelId,
+    dayId: d1,
+  });
+  assert.equal(h.status, 201, JSON.stringify(h.body));
+  assert.equal(h.body.countsInBudget, true);
+  await api.post(url, owner, {
+    bookingType: 'flight',
+    bookingId: flightId,
+    dayId: d2,
+  });
+  assert.equal(
+    (
+      await api.post(url, owner, {
+        bookingType: 'hotel',
+        bookingId: hotelId,
+        dayId: d2,
+      })
+    ).body.code,
+    'BOOKING_ALREADY_LINKED',
+  );
+  assert.equal(
+    (
+      await api.post(url, owner, {
+        bookingType: 'hotel',
+        bookingId: pendingId,
+        dayId: d1,
+      })
+    ).body.code,
+    'BOOKING_NOT_LINKABLE',
+  );
+  assert.equal(
+    (
+      await api.post(url, owner, {
+        bookingType: 'hotel',
+        bookingId: othersId,
+        dayId: d1,
+      })
+    ).status,
+    404,
+    "someone else's booking",
+  );
+  assert.equal(
+    (
+      await api.post(url, newUser(), {
+        bookingType: 'hotel',
+        bookingId: hotelId,
+        dayId: d1,
+      })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+
+  const shown = (await api.get(`/itineraries/${detail.id}`, owner)).body;
+  assert.equal(shown.days[0].linkedBookings[0].bookingId, hotelId);
+  let s = (
+    await api.get(
+      `/itineraries/${detail.id}/budget-summary?currency=EGP`,
+      owner,
+    )
+  ).body;
+  assert.equal(s.byCategory.accommodation, 3000);
+  assert.equal(s.byCategory.intercity_transport, 2000);
+  assert.equal(s.total, 5000);
+
+  // cancelled later -> still linked, no longer counted
+  fakeBookings.set(hotelId, snap(owner, 'Cancelled', 3000));
+  s = (
+    await api.get(
+      `/itineraries/${detail.id}/budget-summary?currency=EGP`,
+      owner,
+    )
+  ).body;
+  assert.equal(s.total, 2000);
+  assert.equal(
+    (await api.get(`/itineraries/${detail.id}`, owner)).body.days[0]
+      .linkedBookings[0].countsInBudget,
+    false,
+  );
+
+  assert.equal(
+    (await api.del(`/itineraries/${detail.id}/bookings/${h.body.id}`, owner))
+      .status,
+    204,
+  );
+  assert.equal(
+    (await api.del(`/itineraries/${detail.id}/bookings/${h.body.id}`, owner))
+      .status,
+    404,
+  );
+  // deleting the day removes its links
+  await api.del(`/itineraries/${detail.id}/days/${d2}`, owner);
+  assert.equal(
+    await db
+      .model('ItineraryBooking')
+      .countDocuments({ itineraryId: detail.id }),
+    0,
+  );
+});
+
+test('export an itinerary as PDF, owner only (ITN-28)', async () => {
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo', 'luxor');
+  await api.post(
+    `/itineraries/${detail.id}/days/${detail.days[0].id}/activities`,
+    owner,
+    { name: 'Pyramids', time: '09:00', cost: 540, currency: 'EGP' },
+  );
+  const res = await api
+    .get(`/itineraries/${detail.id}/pdf`, owner)
+    .buffer(true)
+    .parse((r, cb) => {
+      const chunks = [];
+      r.on('data', (c) => chunks.push(c));
+      r.on('end', () => cb(null, Buffer.concat(chunks)));
+    });
+  assert.equal(res.status, 200);
+  assert.match(res.headers['content-type'], /application\/pdf/);
+  assert.match(
+    res.headers['content-disposition'],
+    /attachment; filename="Two-weeks-in-Egypt\.pdf"/,
+  );
+  assert.equal(res.body.subarray(0, 4).toString(), '%PDF');
+  assert.equal(
+    (await api.get(`/itineraries/${detail.id}/pdf`, newUser())).body.code,
+    'NOT_RESOURCE_OWNER',
   );
 });

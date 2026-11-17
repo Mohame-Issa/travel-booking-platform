@@ -19,6 +19,7 @@ import type {
 } from './dto/budget.dto.js';
 import { convert, ExchangeRatesService } from './exchange-rates.service.js';
 import { dayDate } from './itinerary-dates.js';
+import { ItineraryBookingsService } from './itinerary-bookings.service.js';
 import { ItineraryDaysService } from './itinerary-days.service.js';
 import { Activity } from './schemas/activity.schema.js';
 import { BudgetEntry } from './schemas/budget-entry.schema.js';
@@ -46,6 +47,7 @@ export class BudgetsService {
     private readonly days: ItineraryDaysService,
     private readonly fx: ExchangeRatesService,
     private readonly users: UsersService,
+    private readonly bookingLinks: ItineraryBookingsService,
   ) {}
 
   // ---------------------------------------------------------- budget entries
@@ -185,11 +187,16 @@ export class BudgetsService {
         .exec(),
       this.transport.find({ itineraryId: id }).lean().exec(),
     ]);
+    // ITN-27 (bonus): linked Confirmed/Completed bookings feed the budget.
+    const linked = (await this.bookingLinks.forItinerary(id)).filter(
+      (l) => l.countsInBudget,
+    );
 
     // Only call the exchange-rate service if something is in another currency.
-    const used = [...entries, ...acts, ...trips].map(
-      (x) => x.currency as string,
-    );
+    const used = [
+      ...[...entries, ...acts, ...trips].map((x) => x.currency as string),
+      ...linked.map((l) => l.currency),
+    ];
     const needsRates = used.some((c) => c !== currency);
     const table = needsRates ? await this.fx.getRates() : null;
     const toTarget = (amount: number, from: string) =>
@@ -214,6 +221,12 @@ export class BudgetsService {
         t.amount,
         t.currency,
       );
+    // A linked hotel is accommodation, a linked flight intercity transport.
+    for (const l of linked) {
+      const key =
+        l.bookingType === 'hotel' ? 'accommodation' : 'intercity_transport';
+      perDay.get(l.dayId)![key] += toTarget(l.amount, l.currency);
+    }
 
     const byDay = days.map((d) => {
       const byCategory = roundAll(perDay.get(d._id.toString())!);

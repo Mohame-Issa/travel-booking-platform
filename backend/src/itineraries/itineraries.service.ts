@@ -18,6 +18,8 @@ import type {
 import { toActivityDto } from './activities.service.js';
 import { toEntryDto, toTransportDto } from './budgets.service.js';
 import { buildCityGroups } from './city-groups.js';
+import { ItineraryBookingsService } from './itinerary-bookings.service.js';
+import { ItineraryBooking } from './schemas/itinerary-booking.schema.js';
 import type { ActivityDto } from './dto/day.dto.js';
 import { dayDate, parseIsoDate, toIsoDate } from './itinerary-dates.js';
 import { Activity } from './schemas/activity.schema.js';
@@ -44,8 +46,11 @@ export class ItinerariesService {
     private readonly transport: Model<TransportCost>,
     @InjectModel(Country.name) private readonly countriesRef: Model<Country>,
     @InjectModel(User.name) private readonly users: Model<User>,
+    @InjectModel(ItineraryBooking.name)
+    private readonly links: Model<ItineraryBooking>,
     @InjectConnection() private readonly connection: Connection,
     private readonly uploads: UploadsService,
+    private readonly bookingLinks: ItineraryBookingsService,
   ) {}
 
   /** POST /api/itineraries (ITN-01): private by default. */
@@ -109,6 +114,7 @@ export class ItinerariesService {
       const key = a.dayId.toString();
       byDay.set(key, [...(byDay.get(key) ?? []), toActivityDto(a)]);
     }
+    const linked = await this.bookingLinks.forItinerary(itinerary._id);
     const dayRows = days.map((d) => ({
       id: d._id.toString(),
       dayNumber: d.dayNumber,
@@ -122,6 +128,7 @@ export class ItinerariesService {
       transportCosts: trips
         .filter((t) => t.dayId.toString() === d._id.toString())
         .map(toTransportDto),
+      linkedBookings: linked.filter((l) => l.dayId === d._id.toString()),
     }));
     const summary = toSummary(itinerary);
     if (summary.clonedFrom) {
@@ -185,6 +192,7 @@ export class ItinerariesService {
       await this.activities.deleteMany({ itineraryId }, { session }).exec();
       await this.budgets.deleteMany({ itineraryId }, { session }).exec();
       await this.transport.deleteMany({ itineraryId }, { session }).exec();
+      await this.links.deleteMany({ itineraryId }, { session }).exec();
       await this.days.deleteMany({ itineraryId }, { session }).exec();
       const res = await this.itineraries
         .deleteOne({ _id: itineraryId }, { session })

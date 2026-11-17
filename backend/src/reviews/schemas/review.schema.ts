@@ -5,6 +5,20 @@ import {
   type HydratedDocument,
 } from 'mongoose';
 
+/** HTL-26 (bonus): the hotel moderator's public reply to a review. */
+@Schema({ _id: false })
+export class ReviewReply {
+  @Prop({ type: String, required: true, trim: true, maxlength: 1000 })
+  body: string;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  moderatorId: Types.ObjectId;
+
+  @Prop({ type: Date, required: true })
+  repliedAt: Date;
+}
+const ReviewReplySchema = SchemaFactory.createForClass(ReviewReply);
+
 /**
  * A rating (1-5) with an optional review of a completed hotel stay (HTL-23).
  * Collection: "reviews". One per reservation, however many rooms it had.
@@ -51,6 +65,10 @@ export class Review {
    */
   @Prop({ type: Date, default: null })
   hiddenAt: Date | null;
+
+  /** HTL-26 (bonus): one reply per review; replying again replaces it. */
+  @Prop({ type: ReviewReplySchema, default: null })
+  reply: ReviewReply | null;
 
   createdAt: Date;
   updatedAt: Date;
