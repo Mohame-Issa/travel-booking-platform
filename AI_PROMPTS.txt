@@ -623,7 +623,8 @@ which payments now enforce. I reviewed the diff before merging.
 ================================================
 
 
-=========================================Date: 2026-11-12
+================================================
+Date: 2026-11-12
 Student: Omar Hisham
 Tool: Claude
 Related Requirement: FLT-19, FLT-21, FLT-22, FLT-23, FLT-25, FLT-26, FLT-29, GEN-11
@@ -670,9 +671,6 @@ the HOTEL_BOOKING_LIFECYCLE and refund tokens) and the hasAnyBooking implementat
 Removed the placeholder provider from flights.module.ts so the real reader is used.
 ================================================
 
-
-
-=======
 ================================================
 Date: 2026-11-12
 Student: Youssef Khafagy
@@ -691,6 +689,12 @@ refund record: createRefund returns refundId null and status 'none'. This
 needed a small change to the shared RefundResult contract. Checked that Omar
 Hashem's unmerged flight-bookings branch still builds and passes its tests
 with the change.
+================================================
+
+================================================
+Date: 2026-11-12
+Student: Youssef Khafagy
+Tool: Claude
 Related Requirement: PAY-01, PAY-02
 
 Prompt:
@@ -1144,4 +1148,22 @@ same visibility rule as public itinerary search, so nothing private leaks
 parallel); the list is newest first, 10 per page, filterable by type, with
 current details; an item that later becomes private or deactivated stays in
 the list as unavailable, without its title, until the user removes it.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-04
+
+Prompt:
+Add a section to the README explaining how to set up and test payments with
+Stripe test mode, since the milestone requires a README with setup
+instructions.
+
+How the output was used:
+Added "Payments with Stripe test mode" to the README (test key, Stripe CLI,
+stripe listen with --events, webhook secret, what [200]/[400] mean, EGP,
+test cards, link to docs/api/payments-testing.md) and listed
+npm run test:integration in the commands table.
 ================================================
