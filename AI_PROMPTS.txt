@@ -789,3 +789,26 @@ the day number, so deleting/reordering days or changing the start date can
 never leave a wrong date; deleting an itinerary removes all its children in
 one transaction; a clonedFrom field is ready for Omar Rashed's cloning.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-05, ITN-07, ITN-08, ITN-09, ITN-10, ITN-12
+
+Prompt:
+Continue Nada's itinerary part: add, edit, delete and reorder days (max 60,
+renumbering, dates and city groups recalculated), activities on a day, and
+activity images using Mohamed Hashad's upload service.
+
+How the output was used:
+Reviewed and committed the day and activity services, controllers, DTOs,
+city grouping and end-to-end tests. Decisions: adding a day reserves the next
+number with an atomic counter in a transaction, so parallel requests cannot
+create duplicate numbers or a 61st day; delete and reorder only renumber,
+because dates are calculated; city groups are recomputed on every read;
+images reuse the shared upload service (JPG/PNG, 5 MB, max 5). While writing
+it we found that @CheckOwnership only works on methods, not on the
+controller class, so it is placed on every route and tested with another
+user on every route.
+================================================
