@@ -878,3 +878,25 @@ from the visible reviews after every change, so they cannot drift; hidden
 reviews (admin moderation) do not count; deactivated authors show as
 "Deleted user".
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: GEN-09, GEN-10, GEN-07
+
+Prompt:
+Build the missing reports and admin moderation (Omar Rashed's mandatory part):
+users report content with a reason once per item; admins list open reports,
+dismiss them or hide/delete the content, and hide or delete content directly.
+The blog was dropped, so only reviews and itineraries can be reported.
+
+How the output was used:
+Reviewed and committed the reports module and end-to-end tests. Decisions:
+one report per user per item (unique index); users can only report content
+they can see; hiding sets hiddenAt so the content disappears from public
+search and review lists but stays visible to its author; a hidden review no
+longer counts in the hotel rating; deleting reuses the itinerary and review
+delete logic; hiding or deleting resolves every open report on that content;
+every admin action is written to the audit log.
+================================================
