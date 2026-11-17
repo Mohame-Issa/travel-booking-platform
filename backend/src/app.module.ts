@@ -33,6 +33,7 @@ import { FlightBookingsModule } from './flight-bookings/flight-bookings.module.j
 import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
+import { FavouritesModule } from './favourites/favourites.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
@@ -62,6 +63,7 @@ import { AnalyticsModule } from './analytics/analytics.module.js';
     AccountsModule,
     AdminModule,
     AnalyticsModule, // BON-01 (bonus)
+    FavouritesModule, // BON-02 (bonus)
     // Feature modules are added below this line, one per teammate PR.
     PaymentsModule,
     RefundsModule,
