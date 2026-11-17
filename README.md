@@ -101,6 +101,40 @@ If login works but `/api/auth/me` still says `AUTH_REQUIRED`, your browser is
 refusing Secure cookies on `http://localhost` (Safari does this). Use Chrome or
 Firefox, or set `COOKIE_SECURE=false` in your `backend/.env`.
 
+### Payments with Stripe test mode (PAY-01 to PAY-04)
+
+Payments and refunds use **Stripe test mode only**. No real card or real money
+is ever involved. Without Stripe keys the app still starts, and the payment
+endpoints answer `503 STRIPE_NOT_CONFIGURED`.
+
+1. Create a free Stripe account, keep **Test mode / Sandbox** on, and copy the
+   secret key from **Developers → API keys** into `backend/.env`:
+   ```
+   STRIPE_SECRET_KEY=sk_test_...
+   ```
+   The app refuses anything that is not a `sk_test_` key.
+2. Install the [Stripe CLI](https://docs.stripe.com/stripe-cli) and run
+   `stripe login` once.
+3. Forward Stripe's webhook events to your local API. Keep this running in a
+   second terminal; Stripe CLI 1.55+ needs `--events`:
+   ```bash
+   stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,refund.updated,refund.failed --forward-to localhost:3000/api/payments/webhook
+   ```
+   Copy the `whsec_...` it prints into `backend/.env` as
+   `STRIPE_WEBHOOK_SECRET=whsec_...`, then restart `npm run start:dev`.
+4. Each event shows `[200]` in the `stripe listen` window when the signature
+   is verified. `[400]` means the `whsec_` value in `.env` does not match the
+   running `stripe listen` session.
+
+All amounts are in the platform currency **EGP** (PAY-04). Bookings are
+confirmed **only** by the verified webhook, never by the client.
+
+Test cards for Stripe Elements: `4242 4242 4242 4242` succeeds,
+`4000 0000 0000 0002` is declined (any future date, any CVC). Step-by-step
+Swagger and Stripe CLI checks, including commands that work on new sandbox
+accounts (`stripe trigger payment_intent.*` does not), are in
+[`docs/api/payments-testing.md`](docs/api/payments-testing.md).
+
 ### Useful commands (run in `backend/`)
 
 | Command | What it does |
@@ -109,6 +143,7 @@ Firefox, or set `COOKIE_SECURE=false` in your `backend/.env`.
 | `npm run build` | Compile to `dist/` (must pass before a PR) |
 | `npm run lint` | Lint the code |
 | `npm test` | Run unit tests |
+| `npm run test:integration` | Integration tests on a disposable local MongoDB (includes the payment flow in `test/payments.e2e.mjs`; never touches the shared database) |
 
 ## Git workflow
 

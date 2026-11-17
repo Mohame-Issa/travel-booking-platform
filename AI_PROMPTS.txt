@@ -767,3 +767,21 @@ showed that @Prop({ type: Types.ObjectId }) becomes Mixed; that also broke
 ACC-15's moderator notification, so I fixed the ModeratorAssignment and
 Session schemas, added a unit test and updated AI_RULES.md section 9.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-04
+
+Prompt:
+Add a section to the README explaining how to set up and test payments with
+Stripe test mode, since the milestone requires a README with setup
+instructions.
+
+How the output was used:
+Added "Payments with Stripe test mode" to the README (test key, Stripe CLI,
+stripe listen with --events, webhook secret, what [200]/[400] mean, EGP,
+test cards, link to docs/api/payments-testing.md) and listed
+npm run test:integration in the commands table.
+================================================
