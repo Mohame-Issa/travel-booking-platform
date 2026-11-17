@@ -1036,3 +1036,48 @@ links work once and a new link cancels the old one; the requirement gives no
 expiry, so we chose 24 hours; accounts created before ACC-02 (seeded, admin
 created) count as verified; a mail failure never undoes the registration.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-07
+
+Prompt:
+Build the optional bonus ACC-07: a user who forgot their password requests a
+reset link by email; the link expires after 30 minutes, is single-use, is
+invalidated by a newer request, and the response does not reveal whether the
+email exists.
+
+How the output was used:
+Reviewed and committed POST /api/auth/forgot-password and
+/api/auth/reset-password with end-to-end tests, reusing the ACC-02 email
+links and Mohamed Amr's password hashing and session revoke. Decisions: the
+same answer is returned immediately for known and unknown emails, and the
+email is sent in the background so the response time gives nothing away;
+links are stored only as hashes and used atomically, so a link cannot be used
+twice; a new request deletes older unused links; the new password follows the
+ACC-01 rules; a reset logs out every session, clears a login lock (ACC-05)
+and marks the email as verified; only active accounts get a link.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-02, ACC-07
+
+Prompt:
+Make the links in the verification and password reset emails work by just
+clicking them, so we can show real emails arriving in our own inboxes.
+
+How the output was used:
+Reviewed and committed two small server-rendered pages with end-to-end tests:
+the verification link verifies and shows a confirmation page, and the reset
+link opens a new-password form that applies the same ACC-01 password rules.
+Decisions: the links point at the API (BACKEND_URL, default
+http://localhost:PORT) because Milestone 1 has no frontend; the pages use no
+JavaScript and escape every value; a used or expired link shows an error page;
+real inboxes are reached by putting a Gmail App Password in our own .env only
+(names in .env.example), never in the code.
+================================================

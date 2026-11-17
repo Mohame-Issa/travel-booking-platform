@@ -37,6 +37,29 @@ export function accountPage(title: string, body: string): string {
 </html>`;
 }
 
+/** ACC-07: the form behind the emailed reset link. */
+export function resetPasswordForm(
+  token: string,
+  errors: string[] = [],
+): string {
+  const list = errors.length
+    ? `<ul class="err">${errors.map((e) => `<li>${escapeHtml(e)}</li>`).join('')}</ul>`
+    : '';
+  return accountPage(
+    'Choose a new password',
+    `<h1>Choose a new password</h1>${list}
+<form method="post" action="/api/auth/reset-password/form">
+  <input type="hidden" name="token" value="${escapeHtml(token)}">
+  <label for="p1">New password</label>
+  <input id="p1" name="newPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+  <label for="p2">Repeat the new password</label>
+  <input id="p2" name="confirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+  <small>At least 8 characters, including at least one letter and one digit.</small>
+  <button type="submit">Save new password</button>
+</form>`,
+  );
+}
+
 /** Simple result page (success or error). */
 export function messagePage(
   title: string,

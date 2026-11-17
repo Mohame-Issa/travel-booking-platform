@@ -67,6 +67,18 @@ export class EmailTokensService {
     return row.userId;
   }
 
+  /** True if the link exists, is unused and not expired. Does not use it. */
+  async isUsable(token: string, purpose: EmailTokenPurpose): Promise<boolean> {
+    return !!(await this.tokens
+      .exists({
+        tokenHash: hash(token),
+        purpose,
+        usedAt: null,
+        expiresAt: { $gt: new Date() },
+      })
+      .exec());
+  }
+
   /** Removes a user's remaining unused links of one purpose. */
   async revokeAll(userId: Types.ObjectId, purpose: EmailTokenPurpose) {
     await this.tokens.deleteMany({ userId, purpose, usedAt: null }).exec();
