@@ -97,6 +97,8 @@ export const ErrorCode = {
 
   // Reports and moderation (GEN-09, GEN-10)
   ALREADY_REPORTED: 'ALREADY_REPORTED',
+  // Admin analytics (BON-01, bonus)
+  INVALID_DATE_RANGE: 'INVALID_DATE_RANGE',
   REPORT_ALREADY_RESOLVED: 'REPORT_ALREADY_RESOLVED',
 } as const;
 
