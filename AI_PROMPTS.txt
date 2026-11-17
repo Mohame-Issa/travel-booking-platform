@@ -1060,3 +1060,24 @@ twice; a new request deletes older unused links; the new password follows the
 ACC-01 rules; a reset logs out every session, clears a login lock (ACC-05)
 and marks the email as verified; only active accounts get a link.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-02, ACC-07
+
+Prompt:
+Make the links in the verification and password reset emails work by just
+clicking them, so we can show real emails arriving in our own inboxes.
+
+How the output was used:
+Reviewed and committed two small server-rendered pages with end-to-end tests:
+the verification link verifies and shows a confirmation page, and the reset
+link opens a new-password form that applies the same ACC-01 password rules.
+Decisions: the links point at the API (BACKEND_URL, default
+http://localhost:PORT) because Milestone 1 has no frontend; the pages use no
+JavaScript and escape every value; a used or expired link shows an error page;
+real inboxes are reached by putting a Gmail App Password in our own .env only
+(names in .env.example), never in the code.
+================================================
