@@ -77,6 +77,13 @@ export class Itinerary {
   @Prop({ type: ClonedFromSchema, default: null })
   clonedFrom: ClonedFrom | null;
 
+  /**
+   * GEN-10: set when an admin hides the itinerary. Hidden content is visible
+   * only to its author and admins, so it never appears in public search.
+   */
+  @Prop({ type: Date, default: null })
+  hiddenAt: Date | null;
+
   createdAt: Date;
   updatedAt: Date;
 }

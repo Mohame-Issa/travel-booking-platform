@@ -916,14 +916,12 @@ test('conversion with daily cached rates, preferred currency, fallback when the 
   stubFx();
   fxDown = false;
   await db.model('ExchangeRate').deleteMany({ base: 'USD' }); // only this test's collection on the disposable DB
-  const ownerDoc = await db
-    .model('User')
-    .create({
-      name: 'Fx',
-      email: `fx${Date.now()}@youssef-test.example`,
-      passwordHash: 'x',
-      preferredCurrency: 'USD',
-    });
+  const ownerDoc = await db.model('User').create({
+    name: 'Fx',
+    email: `fx${Date.now()}@youssef-test.example`,
+    passwordHash: 'x',
+    preferredCurrency: 'USD',
+  });
   const owner = String(ownerDoc._id);
   const detail = await withDays(owner, 'cairo');
   const day = detail.days[0].id;
@@ -994,34 +992,28 @@ test('conversion with daily cached rates, preferred currency, fallback when the 
 
 test('hotels for a city group reuse hotel search with the group dates (ITN-25)', async () => {
   const owner = newUser();
-  const hotel = await db
-    .model('Hotel')
-    .create({
-      name: 'Nile View',
-      address: 'Corniche',
-      cityId: 'cairo',
-      countryCode: 'EG',
-      starClass: 4,
-      currency: 'EGP',
-    });
-  const room = await db
-    .model('Room')
-    .create({
-      hotelId: hotel._id,
-      roomNumber: '101',
-      type: 'Double',
-      beds: 1,
-      maxOccupancy: 2,
-      pricePerNight: 1000,
-    });
-  await db
-    .model('RoomAvailability')
-    .create({
-      roomId: room._id,
-      startDate: new Date('2026-11-25T00:00:00Z'),
-      endDate: new Date('2026-12-31T00:00:00Z'),
-      kind: 'Available',
-    });
+  const hotel = await db.model('Hotel').create({
+    name: 'Nile View',
+    address: 'Corniche',
+    cityId: 'cairo',
+    countryCode: 'EG',
+    starClass: 4,
+    currency: 'EGP',
+  });
+  const room = await db.model('Room').create({
+    hotelId: hotel._id,
+    roomNumber: '101',
+    type: 'Double',
+    beds: 1,
+    maxOccupancy: 2,
+    pricePerNight: 1000,
+  });
+  await db.model('RoomAvailability').create({
+    roomId: room._id,
+    startDate: new Date('2026-11-25T00:00:00Z'),
+    endDate: new Date('2026-12-31T00:00:00Z'),
+    kind: 'Available',
+  });
   const detail = await withDays(owner, 'cairo', 'cairo', 'luxor');
 
   const res = await api.get(
@@ -1097,5 +1089,176 @@ test('flights to the first day city reuse flight search with itinerary dates (IT
       )
     ).body.code,
     'NOT_RESOURCE_OWNER',
+  );
+});
+
+// ------------------------------------------------------- ITN-21 public itineraries
+let userSeq = 0;
+async function makeUser(name, status = 'active') {
+  const u = await db
+    .model('User')
+    .create({
+      name,
+      email: `itn21-${++userSeq}-${Date.now()}@youssef-test.example`,
+      passwordHash: 'x',
+      status,
+    });
+  return String(u._id);
+}
+const publish = (id, owner) =>
+  api.patch(`/itineraries/${id}`, owner, { visibility: 'public' });
+const guestGet = (path) => request(http).get(`/api${path}`);
+
+test('public search: keyword, country, city, duration; private, hidden and deactivated authors excluded (ITN-20, ITN-21, ACC-12, GEN-10)', async () => {
+  const sara = await makeUser('Sara Ahmed');
+  const gone = await makeUser('Gone User', 'deactivated');
+  const tag = `Zq${Date.now()}`; // unique words so other tests' itineraries never match
+  const nile = await withDays(sara, 'cairo', 'luxor');
+  await api.patch(`/itineraries/${nile.id}`, sara, { title: `Nile ${tag}` });
+  await publish(nile.id, sara);
+  const dubai = await withDays(sara, 'dubai');
+  await api.patch(`/itineraries/${dubai.id}`, sara, {
+    title: `Desert ${tag}`,
+    countries: ['AE'],
+  });
+  await publish(dubai.id, sara);
+  const priv = await withDays(sara, 'cairo');
+  await api.patch(`/itineraries/${priv.id}`, sara, { title: `Secret ${tag}` });
+  const hidden = await withDays(sara, 'cairo');
+  await api.patch(`/itineraries/${hidden.id}`, sara, {
+    title: `Hidden ${tag}`,
+  });
+  await publish(hidden.id, sara);
+  await db
+    .model('Itinerary')
+    .updateOne({ _id: hidden.id }, { hiddenAt: new Date() });
+  const goneIt = await withDays(gone, 'cairo');
+  await db
+    .model('Itinerary')
+    .updateOne(
+      { _id: goneIt.id },
+      { title: `Ghost ${tag}`, visibility: 'public' },
+    );
+
+  const titles = async (qs) =>
+    (await guestGet(`/itineraries/public/search?${qs}`)).body.items
+      .map((i) => i.title)
+      .sort();
+  assert.deepEqual(await titles(`q=${tag}`), [`Desert ${tag}`, `Nile ${tag}`]);
+  const res = await guestGet(`/itineraries/public/search?q=${tag}`);
+  assert.equal(res.status, 200, 'guests can search');
+  assert.equal(res.body.items[0].author.name, 'Sara Ahmed');
+
+  // keyword also matches a country name or a city name
+  assert.ok((await titles('q=united arab')).includes(`Desert ${tag}`));
+  assert.ok((await titles('q=luxor')).includes(`Nile ${tag}`));
+  // filters
+  assert.deepEqual(await titles(`q=${tag}&country=AE`), [`Desert ${tag}`]);
+  assert.deepEqual(await titles(`q=${tag}&city=luxor`), [`Nile ${tag}`]);
+  assert.deepEqual(await titles(`q=${tag}&minDays=2`), [`Nile ${tag}`]);
+  assert.deepEqual(await titles(`q=${tag}&maxDays=1`), [`Desert ${tag}`]);
+  // ITN-20: setting it private removes it immediately
+  await api.patch(`/itineraries/${dubai.id}`, sara, { visibility: 'private' });
+  assert.deepEqual(await titles(`q=${tag}`), [`Nile ${tag}`]);
+});
+
+test('public view: read-only for guests with author, days, activities, budget; private is 404 (ITN-21)', async () => {
+  const sara = await makeUser('Sara Ahmed');
+  const it = await withDays(sara, 'cairo');
+  await api.post(
+    `/itineraries/${it.id}/days/${it.days[0].id}/activities`,
+    sara,
+    { name: 'Pyramids', cost: 540, currency: 'EGP' },
+  );
+  assert.equal(
+    (await guestGet(`/itineraries/public/${it.id}`)).status,
+    404,
+    'private',
+  );
+  await publish(it.id, sara);
+  const view = await guestGet(`/itineraries/public/${it.id}`);
+  assert.equal(view.status, 200, JSON.stringify(view.body));
+  assert.equal(view.body.author.name, 'Sara Ahmed');
+  assert.equal(view.body.days[0].activities[0].name, 'Pyramids');
+  assert.equal(view.body.budget.total, 540);
+  // read-only to others (ITN-20)
+  assert.equal(
+    (await api.patch(`/itineraries/${it.id}`, newUser(), { title: 'mine now' }))
+      .body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+  assert.equal(
+    (await api.get(`/itineraries/${it.id}`, newUser())).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+});
+
+test('clone: private, independent copy of days, activities, budgets, transport; credits the author (ITN-21, ITN-01)', async () => {
+  const sara = await makeUser('Sara Ahmed');
+  const omar = await makeUser('Omar');
+  const src = await withDays(sara, 'cairo', 'luxor');
+  const [d1, d2] = src.days.map((d) => d.id);
+  await api.post(`/itineraries/${src.id}/days/${d1}/activities`, sara, {
+    name: 'Pyramids',
+    time: '09:00',
+    cost: 540,
+    currency: 'EGP',
+  });
+  await api.post(`/itineraries/${src.id}/days/${d1}/budgets`, sara, {
+    category: 'food',
+    amount: 300,
+    currency: 'EGP',
+  });
+  await api.post(`/itineraries/${src.id}/transport-costs`, sara, {
+    dayId: d2,
+    mode: 'train',
+    fromCityId: 'cairo',
+    toCityId: 'luxor',
+    amount: 1200,
+    currency: 'EGP',
+  });
+
+  assert.equal(
+    (await api.post(`/itineraries/${src.id}/clone`, omar)).status,
+    404,
+    'private cannot be cloned',
+  );
+  await publish(src.id, sara);
+  const res = await api.post(`/itineraries/${src.id}/clone`, omar);
+  assert.equal(res.status, 201, JSON.stringify(res.body));
+  const clone = res.body;
+  assert.notEqual(clone.id, src.id);
+  assert.equal(clone.visibility, 'private');
+  assert.equal(clone.clonedFrom.itineraryId, src.id);
+  assert.equal(clone.clonedFrom.authorId, sara);
+  assert.equal(clone.clonedFrom.authorName, 'Sara Ahmed');
+  assert.deepEqual(summary(clone), summary(src));
+  assert.equal(clone.days[0].activities[0].name, 'Pyramids');
+  assert.equal(clone.days[0].budgetEntries[0].amount, 300);
+  assert.equal(clone.days[1].transportCosts[0].mode, 'train');
+  assert.notEqual(clone.days[0].id, d1, 'new day ids');
+  // the clone belongs to Omar: he can edit it, Sara cannot
+  assert.equal(
+    (await api.patch(`/itineraries/${clone.id}`, omar, { title: 'My Egypt' }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await api.get(`/itineraries/${clone.id}`, sara)).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+  // independent: editing / deleting the original leaves the clone as it was
+  await api.del(`/itineraries/${src.id}/days/${d1}`, sara);
+  await api.del(`/itineraries/${src.id}`, sara);
+  const after = (await api.get(`/itineraries/${clone.id}`, omar)).body;
+  assert.equal(after.dayCount, 2);
+  assert.equal(after.days[0].activities[0].name, 'Pyramids');
+
+  // ACC-12: a deactivated original author is shown as "Deleted user"
+  await db.model('User').updateOne({ _id: sara }, { status: 'deactivated' });
+  assert.equal(
+    (await api.get(`/itineraries/${clone.id}`, omar)).body.clonedFrom
+      .authorName,
+    'Deleted user',
   );
 });

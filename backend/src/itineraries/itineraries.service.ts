@@ -2,11 +2,13 @@ import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { type Connection, Model, Types } from 'mongoose';
 import { ErrorCode } from '../common/constants/error-codes.js';
+import { UserStatus } from '../common/constants/roles.js';
 import type { Paginated } from '../common/dto/pagination.dto.js';
 import { ApiException } from '../common/exceptions/api.exception.js';
 import { paginate } from '../common/utils/paginate.js';
 import { Country } from '../seed/schemas/reference-data.schema.js';
 import { UploadsService } from '../uploads/uploads.service.js';
+import { User } from '../users/schemas/user.schema.js';
 import type {
   CreateItineraryDto,
   ItineraryDetailDto,
@@ -41,6 +43,7 @@ export class ItinerariesService {
     @InjectModel(TransportCost.name)
     private readonly transport: Model<TransportCost>,
     @InjectModel(Country.name) private readonly countriesRef: Model<Country>,
+    @InjectModel(User.name) private readonly users: Model<User>,
     @InjectConnection() private readonly connection: Connection,
     private readonly uploads: UploadsService,
   ) {}
@@ -120,7 +123,19 @@ export class ItinerariesService {
         .filter((t) => t.dayId.toString() === d._id.toString())
         .map(toTransportDto),
     }));
-    return Object.assign(toSummary(itinerary), {
+    const summary = toSummary(itinerary);
+    if (summary.clonedFrom) {
+      // ITN-21: the clone credits its original author ("Deleted user" if deactivated, ACC-12).
+      const author = await this.users
+        .findById(summary.clonedFrom.authorId, { name: 1, status: 1 })
+        .lean()
+        .exec();
+      summary.clonedFrom.authorName =
+        author && author.status !== UserStatus.DEACTIVATED
+          ? author.name
+          : 'Deleted user';
+    }
+    return Object.assign(summary, {
       days: dayRows,
       groups: buildCityGroups(itinerary.startDate, days),
     });

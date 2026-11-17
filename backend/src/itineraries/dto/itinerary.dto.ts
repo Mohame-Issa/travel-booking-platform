@@ -96,6 +96,12 @@ export class ListItinerariesQueryDto extends PaginationQueryDto {}
 export class ClonedFromDto {
   @ApiProperty() itineraryId: string;
   @ApiProperty({ description: 'Original author (ITN-21)' }) authorId: string;
+  @ApiPropertyOptional({
+    example: 'Sara Ahmed',
+    description:
+      'Original author\'s name ("Deleted user" if deactivated, ACC-12); only in details',
+  })
+  authorName?: string;
 }
 
 /** ITN-03 list row. */
