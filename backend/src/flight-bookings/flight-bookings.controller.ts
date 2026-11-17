@@ -17,6 +17,7 @@ import {
   UserRole,
   type AuthenticatedUser,
 } from './flight-bookings.imports.js';
+import { RequireVerifiedEmail } from '../auth/guards/email-verified.guard.js';
 import {
   BookingRequestDto,
   CancelBookingDto,
@@ -44,6 +45,7 @@ export class FlightBookingsController {
 
   @Post('hold')
   @Roles(UserRole.USER)
+  @RequireVerifiedEmail() // ACC-02 (bonus)
   @ApiOperation({
     summary:
       'FLT-22: atomically hold the seats for 10 minutes (creates a Pending Payment booking)',

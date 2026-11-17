@@ -31,6 +31,12 @@ export class UserResponseDto {
   })
   mustChangePassword: boolean;
 
+  @ApiProperty({
+    description:
+      'ACC-02 (bonus): false until the emailed verification link is used; booking needs true.',
+  })
+  emailVerified: boolean;
+
   @ApiProperty()
   createdAt: Date;
 }
@@ -45,6 +51,7 @@ export function toPublicUser(user: User & { _id: unknown }): UserResponseDto {
     phone: user.phone ?? null,
     preferredCurrency: user.preferredCurrency ?? null,
     mustChangePassword: user.mustChangePassword ?? false,
+    emailVerified: user.emailVerified !== false,
     createdAt: user.createdAt,
   };
 }

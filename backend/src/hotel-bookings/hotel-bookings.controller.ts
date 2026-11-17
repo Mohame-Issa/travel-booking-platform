@@ -23,6 +23,7 @@ import {
   HotelBookingResponseDto,
 } from './dto/hotel-booking.dto.js';
 import { HotelBookingsService } from './hotel-bookings.service.js';
+import { RequireVerifiedEmail } from '../auth/guards/email-verified.guard.js';
 
 @ApiTags('Hotel bookings')
 @ApiCookieAuth()
@@ -36,6 +37,7 @@ export class HotelBookingsController {
 
   @Post()
   @Roles(UserRole.USER)
+  @RequireVerifiedEmail() // ACC-02 (bonus)
   @ApiOperation({
     summary: 'Reserve one or more rooms of one hotel (HTL-16, HTL-18)',
     description:

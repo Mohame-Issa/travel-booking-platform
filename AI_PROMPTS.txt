@@ -1014,3 +1014,25 @@ cancellation refund is the tier percentage of everything still paid, split
 over the payments newest first; each refund has a unique refundKey so it can
 never be issued twice (this replaced the one-refund-per-booking index).
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-02
+
+Prompt:
+Build the optional bonus ACC-02: send a verification link by email after
+registration and block booking until the email is verified. Use a test inbox
+in development and never put SMTP passwords in the code.
+
+How the output was used:
+Reviewed and committed a mail service (SMTP settings from .env, otherwise a
+free Ethereal test inbox whose emails are logged with a link to read them),
+POST /api/auth/verify-email and /api/auth/resend-verification, and a
+@RequireVerifiedEmail() guard on the flight and hotel booking routes, with
+end-to-end tests. Decisions: only a SHA-256 hash of the link token is stored;
+links work once and a new link cancels the old one; the requirement gives no
+expiry, so we chose 24 hours; accounts created before ACC-02 (seeded, admin
+created) count as verified; a mail failure never undoes the registration.
+================================================

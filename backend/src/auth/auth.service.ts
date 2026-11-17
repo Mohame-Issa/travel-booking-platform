@@ -66,6 +66,7 @@ export class AuthService {
         role: UserRole.USER,
         status: UserStatus.ACTIVE,
         termsAcceptedAt: new Date(),
+        emailVerified: false, // ACC-02 (bonus): until the emailed link is used
       });
     } catch (e) {
       // Two registrations with the same email at the same moment: the unique index decides.

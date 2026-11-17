@@ -687,3 +687,26 @@ test('FLT-27: 5 parallel change requests on one booking -> exactly one change, s
   );
   assert.equal((await cabin(f2)).heldSeats, 1);
 });
+
+test('ACC-02: an account whose email is not verified cannot hold seats', async () => {
+  const f = await flight(await airline());
+  const _id = new Types.ObjectId();
+  await db
+    .collection('users')
+    .insertOne({
+      _id,
+      name: 'Unverified',
+      email: `u${_id}@youssef-test.example`,
+      role: 'user',
+      status: 'active',
+      emailVerified: false,
+    });
+  const blocked = await hold(String(_id), f, [passenger(99)]);
+  assert.equal(blocked.status, 403);
+  assert.equal(blocked.body.code, 'EMAIL_NOT_VERIFIED');
+  assert.equal((await cabin(f)).heldSeats, 0);
+  await db
+    .collection('users')
+    .updateOne({ _id }, { $set: { emailVerified: true } });
+  assert.equal((await hold(String(_id), f, [passenger(99)])).status, 201);
+});
