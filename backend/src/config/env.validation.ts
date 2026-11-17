@@ -80,6 +80,14 @@ export class EnvironmentVariables {
    * optional: without SMTP_HOST a free Ethereal test inbox is used and each
    * email is logged with a link to read it.
    */
+  /**
+   * ACC-02 / ACC-07 (bonus): public address of this API, used in the emailed
+   * links. Optional, default http://localhost:<PORT>.
+   */
+  @IsOptional()
+  @IsString()
+  BACKEND_URL?: string;
+
   @IsOptional()
   @IsString()
   SMTP_HOST?: string;
