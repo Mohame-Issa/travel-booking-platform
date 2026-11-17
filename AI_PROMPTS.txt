@@ -900,3 +900,42 @@ longer counts in the hotel rating; deleting reuses the itinerary and review
 delete logic; hiding or deleting resolves every open report on that content;
 every admin action is written to the audit log.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BLG-01, BLG-02, BLG-03, BLG-04, BLG-05, BLG-06, BLG-07, BLG-08, BLG-09, BLG-10, BLG-12, GEN-09, GEN-10
+
+Prompt:
+The TA made the blog optional for our team (counts as a bonus). Nobody had
+built it, so build it: posts with drafts, comments, likes, tags, images,
+keyword search ordered by likes + comments, and author pages, and let posts
+and comments be reported and moderated.
+
+How the output was used:
+Reviewed and committed the blog module, the reports extension and end-to-end
+tests. Decisions: one like per user per post via a unique index (tested with
+parallel clicks); like count, comment count and score are recounted from
+the real documents after every change; only published, not hidden posts of
+non-deactivated authors are public; drafts are read through /posts/mine/:id;
+tags are stored trimmed and lower case; images reuse the shared upload
+service; a hidden comment stops counting in the post's score.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BLG-13
+
+Prompt:
+Add the optional BLG-13: an author can attach an itinerary to a post.
+
+How the output was used:
+Reviewed and committed PATCH /api/posts/:id/itinerary with an end-to-end
+test. Decisions: only the author's own itinerary can be attached; readers
+see it only while it is public and not hidden, so a private itinerary can
+never leak through a post; the author always sees what they attached; null
+detaches it.
+================================================

@@ -59,10 +59,10 @@ export class ReportsController {
   @Post()
   @Roles(UserRole.USER)
   @ApiOperation({
-    summary: 'Report a review or itinerary (GEN-09)',
+    summary: 'Report a post, comment, review or itinerary (GEN-09)',
     description:
       'Registered users, with a reason, at most once per item. Only content you can see can be reported ' +
-      '(a public itinerary or a visible review). Posts and comments do not exist: the blog was dropped for this team.',
+      '(a published post, a comment on one, a public itinerary or a visible review).',
   })
   @ApiCreatedResponse({ type: ReportDto })
   @ApiBadRequestResponse({
@@ -137,7 +137,8 @@ export class AdminModerationController {
   @Patch('content/:type/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
-    summary: 'Hide or show a review or itinerary directly (GEN-10)',
+    summary:
+      'Hide or show a post, comment, review or itinerary directly (GEN-10)',
     description:
       'hidden: true hides it from everyone except its author and admins (and a hidden review stops counting in the ' +
       'hotel rating); false shows it again.',
@@ -158,7 +159,7 @@ export class AdminModerationController {
   @Delete('content/:type/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
-    summary: 'Delete a review or itinerary (GEN-10)',
+    summary: 'Delete a post, comment, review or itinerary (GEN-10)',
     description:
       'An itinerary goes with all its days, activities and budgets; a review updates the hotel rating.',
   })

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { BlogModule } from '../blog/blog.module.js';
 import { ItinerariesModule } from '../itineraries/itineraries.module.js';
 import { ReviewsModule } from '../reviews/reviews.module.js';
 import {
@@ -15,6 +16,7 @@ import { Report, ReportSchema } from './schemas/report.schema.js';
  */
 @Module({
   imports: [
+    BlogModule,
     ItinerariesModule,
     ReviewsModule,
     MongooseModule.forFeature([{ name: Report.name, schema: ReportSchema }]),

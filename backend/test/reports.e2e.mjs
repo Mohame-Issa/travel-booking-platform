@@ -100,14 +100,12 @@ before(async () => {
   await db
     .model('Country')
     .create({ _id: 'EG', code: 'EG', name: 'Egypt', currency: 'EGP' });
-  await db
-    .model('City')
-    .create({
-      _id: 'cairo',
-      cityId: 'cairo',
-      name: 'Cairo',
-      countryCode: 'EG',
-    });
+  await db.model('City').create({
+    _id: 'cairo',
+    cityId: 'cairo',
+    name: 'Cairo',
+    countryCode: 'EG',
+  });
 });
 
 after(async () => {
@@ -126,48 +124,40 @@ const report = (u, targetType, targetId, reason = 'Spam') =>
     .send({ targetType, targetId, reason });
 
 async function publicItinerary(owner, title = `Trip ${Math.random()}`) {
-  const it = await db
-    .model('Itinerary')
-    .create({
-      userId: owner,
-      title,
-      countries: ['EG'],
-      startDate: new Date('2026-12-01T00:00:00Z'),
-      visibility: 'public',
-    });
-  await db
-    .model('ItineraryDay')
-    .create({
-      itineraryId: it._id,
-      userId: owner,
-      dayNumber: 1,
-      cityId: 'cairo',
-    });
+  const it = await db.model('Itinerary').create({
+    userId: owner,
+    title,
+    countries: ['EG'],
+    startDate: new Date('2026-12-01T00:00:00Z'),
+    visibility: 'public',
+  });
+  await db.model('ItineraryDay').create({
+    itineraryId: it._id,
+    userId: owner,
+    dayNumber: 1,
+    cityId: 'cairo',
+  });
   await db.model('Itinerary').updateOne({ _id: it._id }, { dayCount: 1 });
   return String(it._id);
 }
 async function hotelWithReviews(...ratings) {
-  const hotel = await db
-    .model('Hotel')
-    .create({
-      name: `H${Math.random()}`,
-      address: 'Nile St',
-      cityId: 'cairo',
-      countryCode: 'EG',
-      starClass: 4,
-      currency: 'EGP',
-    });
+  const hotel = await db.model('Hotel').create({
+    name: `H${Math.random()}`,
+    address: 'Nile St',
+    cityId: 'cairo',
+    countryCode: 'EG',
+    starClass: 4,
+    currency: 'EGP',
+  });
   const reviews = [];
   for (const rating of ratings) {
-    const r = await db
-      .model('Review')
-      .create({
-        userId: id(),
-        hotelId: hotel._id,
-        bookingId: new Types.ObjectId(),
-        rating,
-        comment: `stars ${rating}`,
-      });
+    const r = await db.model('Review').create({
+      userId: id(),
+      hotelId: hotel._id,
+      bookingId: new Types.ObjectId(),
+      rating,
+      comment: `stars ${rating}`,
+    });
     reviews.push(String(r._id));
   }
   const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
@@ -211,20 +201,18 @@ test('report content once, with a reason, only what you can see (GEN-09)', async
     'VALIDATION_FAILED',
   );
   assert.equal(
-    (await report(reporter, 'post', itinerary)).body.code,
+    (await report(reporter, 'video', itinerary)).body.code,
     'VALIDATION_FAILED',
-    'blog was dropped',
+    'unknown content type',
   );
 
-  const priv = await db
-    .model('Itinerary')
-    .create({
-      userId: owner,
-      title: 'Private',
-      countries: ['EG'],
-      startDate: new Date(),
-      visibility: 'private',
-    });
+  const priv = await db.model('Itinerary').create({
+    userId: owner,
+    title: 'Private',
+    countries: ['EG'],
+    startDate: new Date(),
+    visibility: 'private',
+  });
   assert.equal(
     (await report(reporter, 'itinerary', String(priv._id))).status,
     404,
@@ -297,13 +285,11 @@ test('hide from a report: gone from public search, still visible to the owner; a
     'REPORT_ALREADY_RESOLVED',
   );
   assert.equal(
-    await db
-      .model('AuditLog')
-      .countDocuments({
-        action: 'itinerary.hidden',
-        targetId: itinerary,
-        actorId: ADMIN,
-      }),
+    await db.model('AuditLog').countDocuments({
+      action: 'itinerary.hidden',
+      targetId: itinerary,
+      actorId: ADMIN,
+    }),
     1,
   );
 
@@ -405,8 +391,77 @@ test('hide / delete directly; a hidden review stops counting in the rating (GEN-
     'INSUFFICIENT_ROLE',
   );
   assert.equal(
-    (await request(http).delete(`/api/admin/content/post/${id()}`).set(asAdmin))
-      .body.code,
+    (
+      await request(http)
+        .delete(`/api/admin/content/video/${id()}`)
+        .set(asAdmin)
+    ).body.code,
     'VALIDATION_FAILED',
+  );
+});
+
+test('posts and comments: report, hide a comment (count follows), delete a post (GEN-09, GEN-10, BLG-09)', async () => {
+  const author = id();
+  const post = await db
+    .model('Post')
+    .create({
+      authorId: author,
+      title: 'Spammy',
+      body: 'Buy now',
+      status: 'published',
+      publishedAt: new Date(),
+    });
+  const comment = await db
+    .model('Comment')
+    .create({ postId: post._id, authorId: id(), body: 'rude words' });
+  await db
+    .model('Post')
+    .updateOne({ _id: post._id }, { commentCount: 1, score: 1 });
+
+  const draft = await db
+    .model('Post')
+    .create({ authorId: author, title: 'Draft', body: 'x' });
+  assert.equal(
+    (await report(id(), 'post', String(draft._id))).status,
+    404,
+    'drafts cannot be reported',
+  );
+
+  const rc = (await report(id(), 'comment', String(comment._id), 'Insults'))
+    .body;
+  assert.equal(rc.target.preview, 'rude words');
+  const hidden = await request(http)
+    .patch(`/api/admin/reports/${rc.id}`)
+    .set(asAdmin)
+    .send({ action: 'hide' });
+  assert.equal(hidden.body.status, 'content_hidden');
+  const after = await db.model('Post').findById(post._id).lean();
+  assert.deepEqual(
+    [after.commentCount, after.score],
+    [0, 0],
+    'hidden comment no longer counts',
+  );
+  assert.equal(
+    (await request(http).get(`/api/posts/${post._id}`)).body.comments.items
+      .length,
+    0,
+  );
+
+  const rp = (await report(id(), 'post', String(post._id), 'Spam')).body;
+  const del = await request(http)
+    .patch(`/api/admin/reports/${rp.id}`)
+    .set(asAdmin)
+    .send({ action: 'delete' });
+  assert.equal(del.body.status, 'content_deleted');
+  assert.equal(await db.model('Post').exists({ _id: post._id }), null);
+  assert.equal(
+    await db.model('Comment').countDocuments({ postId: post._id }),
+    0,
+  );
+  assert.equal(
+    await db
+      .model('AuditLog')
+      .countDocuments({ action: 'post.deleted', targetId: String(post._id) }),
+    1,
   );
 });
