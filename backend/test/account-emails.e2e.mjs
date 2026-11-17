@@ -222,13 +222,11 @@ test('ACC-07: same answer whether or not the email exists', async () => {
 
 test('ACC-07: the link resets the password once, logs out every session and verifies the email', async () => {
   const { email, id } = await register();
-  await db
-    .collection('sessions')
-    .insertOne({
-      userId: new (await import('mongoose')).Types.ObjectId(id),
-      revokedAt: null,
-      expiresAt: new Date(Date.now() + 3_600_000),
-    });
+  await db.collection('sessions').insertOne({
+    userId: new (await import('mongoose')).Types.ObjectId(id),
+    revokedAt: null,
+    expiresAt: new Date(Date.now() + 3_600_000),
+  });
   await forgot(email);
   const token = tokenIn(await resetMail(email, 1));
 
@@ -240,13 +238,11 @@ test('ACC-07: the link resets the password once, logs out every session and veri
   assert.equal((await login(email, 'NewPass2026')).status, 200);
   const user = await db.collection('users').findOne({ email });
   assert.equal(user.emailVerified, true);
-  const open = await db
-    .collection('sessions')
-    .countDocuments({
-      userId: user._id,
-      revokedAt: null,
-      expiresAt: { $gt: new Date() },
-    });
+  const open = await db.collection('sessions').countDocuments({
+    userId: user._id,
+    revokedAt: null,
+    expiresAt: { $gt: new Date() },
+  });
   assert.equal(open, 1); // only the new login's session
 
   const reused = await reset(token, 'Another2026');
@@ -262,13 +258,11 @@ test('ACC-07: a newer request cancels the older link; links expire after 30 minu
   const second = tokenIn(await resetMail(email, 2));
   assert.equal((await reset(first)).status, 400);
 
-  const row = await db
-    .collection('emailtokens')
-    .findOne({
-      purpose: 'reset_password',
-      usedAt: null,
-      userId: (await db.collection('users').findOne({ email }))._id,
-    });
+  const row = await db.collection('emailtokens').findOne({
+    purpose: 'reset_password',
+    usedAt: null,
+    userId: (await db.collection('users').findOne({ email }))._id,
+  });
   const minutes = (row.expiresAt - row.createdAt) / 60_000;
   assert.ok(Math.abs(minutes - 30) < 0.1, `expires after ${minutes} minutes`);
   await db
@@ -278,4 +272,53 @@ test('ACC-07: a newer request cancels the older link; links expire after 30 minu
       { $set: { expiresAt: new Date(Date.now() - 1000) } },
     );
   assert.equal((await reset(second)).status, 400);
+});
+
+test('ACC-07: clicking the emailed link opens a form that resets the password', async () => {
+  const { email } = await register();
+  await forgot(email);
+  const mail = await resetMail(email, 1);
+  const link = new URL(/(http\S+)/.exec(mail.text)[1]);
+  assert.equal(link.origin, 'http://api.test');
+  const token = link.searchParams.get('token');
+
+  const form = await request(http).get(`${link.pathname}${link.search}`);
+  assert.equal(form.status, 200);
+  assert.match(form.text, /Choose a new password/);
+
+  const submit = (fields) =>
+    request(http)
+      .post('/api/auth/reset-password/form')
+      .type('form')
+      .send({ token, ...fields });
+  const mismatch = await submit({
+    newPassword: 'Garden2026',
+    confirmPassword: 'Garden2027',
+  });
+  assert.equal(mismatch.status, 400);
+  assert.match(mismatch.text, /not the same/);
+  const weak = await submit({
+    newPassword: 'abcdefgh',
+    confirmPassword: 'abcdefgh',
+  });
+  assert.equal(weak.status, 400);
+  assert.match(weak.text, /at least one digit/);
+
+  const ok = await submit({
+    newPassword: 'Garden2026',
+    confirmPassword: 'Garden2026',
+  });
+  assert.equal(ok.status, 200);
+  assert.match(ok.text, /Password changed/);
+  assert.equal((await login(email, 'Garden2026')).status, 200);
+
+  const again = await request(http).get(`${link.pathname}${link.search}`);
+  assert.equal(again.status, 400);
+  assert.match(again.text, /Link not valid/);
+  const reused = await submit({
+    newPassword: 'Other2026x',
+    confirmPassword: 'Other2026x',
+  });
+  assert.equal(reused.status, 400);
+  assert.match(reused.text, /Link not valid/);
 });

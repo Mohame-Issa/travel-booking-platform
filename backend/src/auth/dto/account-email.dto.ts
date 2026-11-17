@@ -27,3 +27,14 @@ export class ResetPasswordDto extends EmailTokenDto {
   @IsValidPassword()
   newPassword: string;
 }
+
+/**
+ * ACC-07: the HTML form of the emailed link (application/x-www-form-urlencoded).
+ * Only shape checks here; the password rules are checked by the controller
+ * with ResetPasswordDto so the errors can be shown on the page.
+ */
+export class ResetPasswordFormDto {
+  @ApiProperty() @IsString() token: string;
+  @ApiProperty() @IsString() newPassword: string;
+  @ApiProperty() @IsString() confirmPassword: string;
+}

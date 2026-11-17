@@ -7,7 +7,7 @@ import { MailService } from '../mail/mail.service.js';
 import { User } from '../users/schemas/user.schema.js';
 import { AuthService } from './auth.service.js';
 import { EmailTokensService } from './email-tokens.service.js';
-import { frontendUrl } from './email-verification.service.js';
+import { backendUrl } from './email-verification.service.js';
 import { EmailTokenPurpose } from './schemas/email-token.schema.js';
 
 /** ACC-07: "the link expires after 30 minutes". */
@@ -45,6 +45,11 @@ export class PasswordResetService {
     void this.sendLink(email).catch((e: Error) =>
       this.logger.error(`Password reset email failed: ${e.message}`),
     );
+  }
+
+  /** GET page: is this link still usable? (Does not use it up.) */
+  isUsable(token: string): Promise<boolean> {
+    return this.tokens.isUsable(token, EmailTokenPurpose.RESET_PASSWORD);
   }
 
   /** POST /api/auth/reset-password */
@@ -91,7 +96,7 @@ export class PasswordResetService {
       subject: 'Reset your password',
       text:
         `Hello ${user.name},\n\n` +
-        `Use this link to choose a new password:\n${frontendUrl(this.config)}/reset-password?token=${token}\n\n` +
+        `Use this link to choose a new password:\n${backendUrl(this.config)}/api/auth/reset-password?token=${token}\n\n` +
         'The link works once and expires in 30 minutes. Requesting another link cancels this one. ' +
         'If you did not ask for this, you can ignore this email; your password stays the same.',
     });
