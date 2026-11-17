@@ -4,6 +4,8 @@ import { AccountEmailController } from './account-email.controller.js';
 import { EmailTokensService } from './email-tokens.service.js';
 import { EmailVerificationService } from './email-verification.service.js';
 import { EmailVerifiedGuard } from './guards/email-verified.guard.js';
+import { AuthModule } from './auth.module.js';
+import { PasswordResetService } from './password-reset.service.js';
 import { EmailToken, EmailTokenSchema } from './schemas/email-token.schema.js';
 
 /**
@@ -14,12 +16,18 @@ import { EmailToken, EmailTokenSchema } from './schemas/email-token.schema.js';
 @Global()
 @Module({
   imports: [
+    AuthModule, // password hashing and session revoke (ACC-07)
     MongooseModule.forFeature([
       { name: EmailToken.name, schema: EmailTokenSchema },
     ]),
   ],
   controllers: [AccountEmailController],
-  providers: [EmailTokensService, EmailVerificationService, EmailVerifiedGuard],
+  providers: [
+    EmailTokensService,
+    EmailVerificationService,
+    EmailVerifiedGuard,
+    PasswordResetService,
+  ],
   exports: [EmailTokensService, EmailVerificationService, EmailVerifiedGuard],
 })
 export class AccountEmailModule {}
