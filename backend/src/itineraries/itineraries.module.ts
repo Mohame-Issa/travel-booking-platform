@@ -11,6 +11,8 @@ import { BudgetsService } from './budgets.service.js';
 import { ExchangeRatesService } from './exchange-rates.service.js';
 import { ItineraryBudgetController } from './itinerary-budget.controller.js';
 import { ItinerarySearchService } from './itinerary-search.service.js';
+import { PublicItinerariesController } from './public-itineraries.controller.js';
+import { PublicItinerariesService } from './public-itineraries.service.js';
 import { ActivitiesController } from './activities.controller.js';
 import { ActivitiesService } from './activities.service.js';
 import { ItinerariesController } from './itineraries.controller.js';
@@ -56,6 +58,7 @@ import {
     ]),
   ],
   controllers: [
+    PublicItinerariesController, // first: its /public/... routes are literal
     ItinerariesController,
     ItineraryDaysController,
     ActivitiesController,
@@ -70,6 +73,7 @@ import {
     BudgetsService,
     ExchangeRatesService,
     ItinerarySearchService,
+    PublicItinerariesService,
   ],
   exports: [MongooseModule, ItinerariesService],
 })

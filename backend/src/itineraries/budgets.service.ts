@@ -158,7 +158,7 @@ export class BudgetsService {
    */
   async summary(
     itineraryId: string,
-    userId: string,
+    userId: string | null,
     wanted?: string,
   ): Promise<BudgetSummaryDto> {
     const itinerary = await this.itineraries
@@ -166,10 +166,10 @@ export class BudgetsService {
       .lean()
       .exec();
     if (!itinerary) throw new NotFoundException('Itinerary not found');
-    const currency =
-      wanted ??
-      (await this.users.findById(userId))?.preferredCurrency ??
-      PLATFORM_CURRENCY;
+    const preferred = userId
+      ? (await this.users.findById(userId))?.preferredCurrency
+      : null;
+    const currency = wanted ?? preferred ?? PLATFORM_CURRENCY;
 
     const id = new Types.ObjectId(itineraryId);
     const [days, entries, acts, trips] = await Promise.all([

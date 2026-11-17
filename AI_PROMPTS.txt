@@ -835,3 +835,25 @@ conversion is needed, at most once per day; the optional FXRATES_API_KEY
 stays in backend/.env; hotel and flight search reuse Yassin's services
 instead of copying them.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-21, ITN-20, ACC-12, GEN-10
+
+Prompt:
+The TA dropped the blog (BLG-*). Check if anyone worked on it; before that,
+build the missing mandatory parts first, starting with public itinerary
+search, read-only view and cloning (ITN-21), which nobody had built.
+
+How the output was used:
+Reviewed and committed the public itinerary search, view and clone endpoints
+with end-to-end tests. Decisions: only public, not admin-hidden itineraries
+of non-deactivated authors are visible (ITN-20, GEN-10, ACC-12); everything
+else answers 404 so private itineraries are never revealed; the keyword also
+matches country and city names; the clone is a private independent copy in
+one transaction that credits the original author ("Deleted user" if
+deactivated); activity images are not copied because an upload belongs to
+one activity.
+================================================
