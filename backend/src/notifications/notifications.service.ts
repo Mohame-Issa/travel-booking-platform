@@ -8,6 +8,7 @@ import type {
   NotifyInput,
 } from '../common/interfaces/index.js';
 import { paginate } from '../common/utils/paginate.js';
+import { NotificationEmailsService } from './notification-emails.service.js';
 import { Notification } from './schemas/notification.schema.js';
 
 /** GEN-01. Bound to NOTIFICATION_SERVICE so any module can notify a user. */
@@ -15,10 +16,13 @@ import { Notification } from './schemas/notification.schema.js';
 export class NotificationsService implements NotificationService {
   constructor(
     @InjectModel(Notification.name) private readonly notes: Model<Notification>,
+    private readonly emails: NotificationEmailsService, // GEN-01-B (bonus)
   ) {}
 
   async notify(input: NotifyInput): Promise<void> {
     await this.notes.create(input);
+    // GEN-01-B: email copy in the background, so SMTP never slows a booking.
+    void this.emails.emailUsers([input.userId], input);
   }
 
   async notifyMany(
@@ -28,6 +32,7 @@ export class NotificationsService implements NotificationService {
     const unique = [...new Set(userIds)];
     if (!unique.length) return;
     await this.notes.insertMany(unique.map((userId) => ({ ...input, userId })));
+    void this.emails.emailUsers(unique, input); // GEN-01-B (bonus)
   }
 
   listMine(userId: string, page: number, unreadOnly = false) {

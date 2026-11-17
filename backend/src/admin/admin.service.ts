@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
@@ -32,6 +32,7 @@ import { ModeratorAssignment } from '../users/schemas/moderator-assignment.schem
 import { User, UserDocument } from '../users/schemas/user.schema.js';
 
 import { CreateModeratorDto } from './dto/create-moderator.dto.js';
+import { NotificationEmailsService } from '../notifications/notification-emails.service.js';
 import { ListAccountsQueryDto } from './dto/list-accounts-query.dto.js';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto.js';
 
@@ -123,6 +124,10 @@ export class AdminService {
 
     @Inject(NOTIFICATION_SERVICE)
     private readonly notifications: NotificationService,
+
+    // GEN-01-B (bonus): optional so test setups without it still start.
+    @Optional()
+    private readonly notificationEmails?: NotificationEmailsService,
   ) {}
 
   /**
@@ -266,6 +271,19 @@ export class AdminService {
         providerId: dto.providerId,
       },
     });
+
+    // GEN-01-B (bonus, Youssef Khafagy): moderator invitation by email.
+    if (this.notificationEmails) {
+      const providerDoc =
+        dto.providerType === ProviderType.AIRLINE
+          ? await this.airlineModel.findById(dto.providerId, { name: 1 }).lean()
+          : await this.hotelModel.findById(dto.providerId, { name: 1 }).lean();
+      void this.notificationEmails.inviteModerator(
+        moderator,
+        dto.providerType,
+        providerDoc?.name ?? 'your provider',
+      );
+    }
 
     return moderator;
   }

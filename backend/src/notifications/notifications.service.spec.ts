@@ -18,7 +18,13 @@ function setup(found: Record<string, unknown> | null = null) {
     findOne: vi.fn().mockReturnValue(exec(found)),
     updateMany: vi.fn().mockReturnValue(exec({ modifiedCount: 2 })),
   };
-  return { model, service: new NotificationsService(model as never) };
+  // GEN-01-B: the email copy (its own service) is faked here.
+  const emails = { emailUsers: vi.fn().mockResolvedValue(undefined) };
+  return {
+    model,
+    emails,
+    service: new NotificationsService(model as never, emails as never),
+  };
 }
 
 describe('NotificationsService (GEN-01)', () => {
@@ -72,5 +78,30 @@ describe('NotificationsService (GEN-01)', () => {
       userId: USER,
       readAt: null,
     });
+  });
+
+  it('GEN-01-B: also emails each notified user (in the background)', async () => {
+    const { service, emails } = setup();
+    await service.notify({
+      userId: 'u1',
+      type: 'booking_confirmed',
+      title: 'Booking confirmed',
+      message: 'Done',
+    });
+    await service.notifyMany(['u2', 'u2', 'u3'], {
+      type: 'flight_schedule_changed',
+      title: 'Schedule changed',
+      message: 'New times',
+    });
+    expect(emails.emailUsers).toHaveBeenNthCalledWith(
+      1,
+      ['u1'],
+      expect.objectContaining({ title: 'Booking confirmed' }),
+    );
+    expect(emails.emailUsers).toHaveBeenNthCalledWith(
+      2,
+      ['u2', 'u3'],
+      expect.objectContaining({ title: 'Schedule changed' }),
+    );
   });
 });
