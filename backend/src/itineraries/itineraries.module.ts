@@ -10,7 +10,13 @@ import {
 import { BudgetsService } from './budgets.service.js';
 import { ExchangeRatesService } from './exchange-rates.service.js';
 import { ItineraryBudgetController } from './itinerary-budget.controller.js';
+import { ItineraryBookingsService } from './itinerary-bookings.service.js';
 import { ItinerarySearchService } from './itinerary-search.service.js';
+import { ItineraryPdfService } from './itinerary-pdf.service.js';
+import {
+  ItineraryBooking,
+  ItineraryBookingSchema,
+} from './schemas/itinerary-booking.schema.js';
 import { PublicItinerariesController } from './public-itineraries.controller.js';
 import { PublicItinerariesService } from './public-itineraries.service.js';
 import { ActivitiesController } from './activities.controller.js';
@@ -55,6 +61,7 @@ import {
       { name: BudgetEntry.name, schema: BudgetEntrySchema },
       { name: TransportCost.name, schema: TransportCostSchema },
       { name: ExchangeRate.name, schema: ExchangeRateSchema },
+      { name: ItineraryBooking.name, schema: ItineraryBookingSchema },
     ]),
   ],
   controllers: [
@@ -74,6 +81,8 @@ import {
     ExchangeRatesService,
     ItinerarySearchService,
     PublicItinerariesService,
+    ItineraryBookingsService,
+    ItineraryPdfService,
   ],
   exports: [MongooseModule, ItinerariesService],
 })

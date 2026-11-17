@@ -2,12 +2,14 @@ import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ErrorCode } from '../common/constants/error-codes.js';
-import { UserStatus } from '../common/constants/roles.js';
+import { ProviderType, UserStatus } from '../common/constants/roles.js';
 import { ApiException } from '../common/exceptions/api.exception.js';
 import { BookingStatus } from '../common/interfaces/index.js';
 import { paginate } from '../common/utils/paginate.js';
 import { HotelBooking } from '../hotel-bookings/schemas/hotel-booking.schema.js';
 import { Hotel } from '../hotels/schemas/hotel.schema.js';
+import type { AuthenticatedUser } from '../common/types/authenticated-user.js';
+import { ModeratorAssignmentsService } from '../users/moderator-assignments.service.js';
 import { User } from '../users/schemas/user.schema.js';
 import type {
   CreateReviewDto,
@@ -38,6 +40,7 @@ export class ReviewsService {
     private readonly bookings: Model<HotelBooking>,
     @InjectModel(Hotel.name) private readonly hotels: Model<Hotel>,
     @InjectModel(User.name) private readonly users: Model<User>,
+    private readonly assignments: ModeratorAssignmentsService,
   ) {}
 
   /** POST /api/hotel-bookings/:id/review (owner checked by @CheckOwnership). */
@@ -102,6 +105,41 @@ export class ReviewsService {
     const review = await this.reviews.findByIdAndDelete(id).lean().exec();
     if (!review) throw new NotFoundException('Review not found');
     await this.recalculate(review.hotelId);
+  }
+
+  /**
+   * POST /api/reviews/:id/reply (HTL-26, bonus): only the moderator assigned
+   * to the review's hotel (admins pass too). Replying again replaces it.
+   */
+  async reply(
+    id: string,
+    user: AuthenticatedUser,
+    body: string,
+  ): Promise<ReviewDto> {
+    const review = await this.reviews.findById(id).lean().exec();
+    if (!review) throw new NotFoundException('Review not found');
+    await this.assignments.assertCanManage(
+      user,
+      ProviderType.HOTEL,
+      review.hotelId.toString(),
+    );
+    const updated = await this.reviews
+      .findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            reply: {
+              body,
+              moderatorId: new Types.ObjectId(user.id),
+              repliedAt: new Date(),
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .lean()
+      .exec();
+    return this.toDto(updated as ReviewRow);
   }
 
   /** GET /api/hotels/:id/reviews (HTL-24): public, newest first, 10 per page. */
@@ -170,6 +208,9 @@ export class ReviewsService {
             ? author.name
             : DELETED_USER,
       },
+      reply: r.reply
+        ? { body: r.reply.body, repliedAt: r.reply.repliedAt }
+        : null,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     };

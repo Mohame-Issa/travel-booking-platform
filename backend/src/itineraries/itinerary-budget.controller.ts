@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  StreamableFile,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiCookieAuth,
@@ -10,6 +21,9 @@ import {
   ApiServiceUnavailableResponse,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiConflictResponse,
+  ApiNoContentResponse,
+  ApiProduces,
 } from '@nestjs/swagger';
 import { UserRole } from '../common/constants/roles.js';
 import { CurrentUser, Roles } from '../common/decorators/auth.decorators.js';
@@ -27,6 +41,12 @@ import {
   ItineraryFlightSearchDto,
   ItineraryHotelSearchDto,
 } from './dto/itinerary-search.dto.js';
+import {
+  LinkBookingDto,
+  LinkedBookingDto,
+} from './dto/itinerary-booking.dto.js';
+import { ItineraryBookingsService } from './itinerary-bookings.service.js';
+import { ItineraryPdfService } from './itinerary-pdf.service.js';
 import { ItinerarySearchService } from './itinerary-search.service.js';
 import { Itinerary } from './schemas/itinerary.schema.js';
 
@@ -51,6 +71,8 @@ export class ItineraryBudgetController {
   constructor(
     private readonly budgets: BudgetsService,
     private readonly search: ItinerarySearchService,
+    private readonly bookingLinks: ItineraryBookingsService,
+    private readonly pdfs: ItineraryPdfService,
   ) {}
 
   @Post('transport-costs')
@@ -142,5 +164,68 @@ export class ItineraryBudgetController {
     @Query() query: ItineraryFlightSearchDto,
   ) {
     return this.search.flightsToStart(id, query);
+  }
+
+  @Post('bookings')
+  @CheckOwnership({ model: Itinerary.name })
+  @ApiOperation({
+    summary: 'Link one of my bookings to a day (ITN-27, bonus)',
+    description:
+      'A Confirmed or Completed flight booking or hotel reservation of mine. It feeds the budget: a hotel as ' +
+      'accommodation, a flight as intercity transport. If it is cancelled later it stops counting.',
+  })
+  @ApiCreatedResponse({ type: LinkedBookingDto })
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description: 'VALIDATION_FAILED',
+  })
+  @ApiConflictResponse({
+    type: ErrorResponseDto,
+    description: 'BOOKING_NOT_LINKABLE or BOOKING_ALREADY_LINKED',
+  })
+  linkBooking(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: LinkBookingDto,
+  ): Promise<LinkedBookingDto> {
+    return this.bookingLinks.link(id, userId, dto);
+  }
+
+  @Delete('bookings/:linkId')
+  @CheckOwnership({ model: Itinerary.name })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Unlink a booking from the itinerary (ITN-27, bonus)',
+    description: 'The booking itself is not changed.',
+  })
+  @ApiNoContentResponse({ description: 'Unlinked' })
+  unlinkBooking(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('linkId', ParseObjectIdPipe) linkId: string,
+  ): Promise<void> {
+    return this.bookingLinks.unlink(id, linkId);
+  }
+
+  @Get('pdf')
+  @CheckOwnership({ model: Itinerary.name })
+  @ApiOperation({
+    summary: 'Export the itinerary as a PDF (ITN-28, bonus)',
+    description:
+      'Days with dates and cities, activities, budget entries, transport, linked bookings and the budget totals.',
+  })
+  @ApiProduces('application/pdf')
+  @ApiOkResponse({
+    description: 'The PDF file',
+    schema: { type: 'string', format: 'binary' },
+  })
+  async pdf(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ): Promise<StreamableFile> {
+    const { pdf, filename } = await this.pdfs.render(id, userId);
+    return new StreamableFile(pdf, {
+      type: 'application/pdf',
+      disposition: `attachment; filename="${filename}"`,
+    });
   }
 }

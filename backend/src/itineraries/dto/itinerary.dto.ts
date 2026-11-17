@@ -14,6 +14,7 @@ import {
 import { PaginationQueryDto } from '../../common/dto/pagination.dto.js';
 import { ItineraryVisibility } from '../schemas/itinerary.schema.js';
 import { BudgetEntryDto, TransportCostDto } from './budget.dto.js';
+import { LinkedBookingDto } from './itinerary-booking.dto.js';
 import { ActivityDto, CityGroupDto } from './day.dto.js';
 
 const trim = ({ value }: { value: unknown }) =>
@@ -142,6 +143,11 @@ export class ItineraryDayDto {
   budgetEntries: BudgetEntryDto[];
   @ApiProperty({ type: [TransportCostDto], description: 'ITN-16' })
   transportCosts: TransportCostDto[];
+  @ApiProperty({
+    type: [LinkedBookingDto],
+    description: 'ITN-27 (bonus): booked flights / hotels linked to this day',
+  })
+  linkedBookings: LinkedBookingDto[];
 }
 
 /** ITN-03 full details (days, activities and budgets are added by later steps). */

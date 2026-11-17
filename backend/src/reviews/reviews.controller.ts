@@ -24,13 +24,19 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { UserRole } from '../common/constants/roles.js';
-import { Public, Roles } from '../common/decorators/auth.decorators.js';
+import {
+  CurrentUser,
+  Public,
+  Roles,
+} from '../common/decorators/auth.decorators.js';
+import type { AuthenticatedUser } from '../common/types/authenticated-user.js';
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import { CheckOwnership } from '../common/guards/ownership.guard.js';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe.js';
 import { HotelBooking } from '../hotel-bookings/schemas/hotel-booking.schema.js';
 import {
   CreateReviewDto,
+  ReplyDto,
   HotelReviewsDto,
   ListReviewsQueryDto,
   ReviewDto,
@@ -131,6 +137,37 @@ export class ReviewsController {
   })
   remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
     return this.reviews.remove(id);
+  }
+
+  @Post('reviews/:id/reply')
+  @Roles(UserRole.HOTEL_MODERATOR, UserRole.ADMIN)
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Reply to a review of my hotel (HTL-26, bonus)',
+    description:
+      'Only the moderator assigned to the hotel (admins too). One reply per review; replying again replaces it. ' +
+      'Shown under the review in GET /api/hotels/:id/reviews.',
+  })
+  @ApiCreatedResponse({ type: ReviewDto })
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description: 'VALIDATION_FAILED',
+  })
+  @ApiUnauthorizedResponse(unauthorized)
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'INSUFFICIENT_ROLE or NOT_ASSIGNED_PROVIDER',
+  })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'Review not found',
+  })
+  reply(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ReplyDto,
+  ): Promise<ReviewDto> {
+    return this.reviews.reply(id, user, dto.body);
   }
 
   @Get('hotels/:id/reviews')

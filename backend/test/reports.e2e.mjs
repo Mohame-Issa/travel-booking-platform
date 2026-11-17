@@ -18,6 +18,7 @@ import request from 'supertest';
 import { AuditModule } from '../dist/audit/audit.module.js';
 import { AllExceptionsFilter } from '../dist/common/filters/all-exceptions.filter.js';
 import { RolesGuard } from '../dist/common/guards/roles.guard.js';
+import { FLIGHT_BOOKING_PAYMENT_READER } from '../dist/common/interfaces/index.js';
 import { createValidationPipe } from '../dist/common/pipes/validation.pipe.js';
 import {
   FLIGHT_BOOKING_HISTORY_READER,
@@ -58,6 +59,18 @@ Module({
 })(HistoryReaderStub);
 Global()(HistoryReaderStub);
 
+class BookingReaderStub {}
+Module({
+  providers: [
+    {
+      provide: FLIGHT_BOOKING_PAYMENT_READER,
+      useValue: { getPaymentSnapshot: async () => null },
+    },
+  ],
+  exports: [FLIGHT_BOOKING_PAYMENT_READER],
+})(BookingReaderStub);
+Global()(BookingReaderStub);
+
 let mongo, app, db, http;
 
 before(async () => {
@@ -82,6 +95,7 @@ before(async () => {
       HotelsCatalogueModule,
       HotelBookingsModule,
       HistoryReaderStub,
+      BookingReaderStub,
       ReportsModule,
     ],
     providers: [
@@ -402,15 +416,13 @@ test('hide / delete directly; a hidden review stops counting in the rating (GEN-
 
 test('posts and comments: report, hide a comment (count follows), delete a post (GEN-09, GEN-10, BLG-09)', async () => {
   const author = id();
-  const post = await db
-    .model('Post')
-    .create({
-      authorId: author,
-      title: 'Spammy',
-      body: 'Buy now',
-      status: 'published',
-      publishedAt: new Date(),
-    });
+  const post = await db.model('Post').create({
+    authorId: author,
+    title: 'Spammy',
+    body: 'Buy now',
+    status: 'published',
+    publishedAt: new Date(),
+  });
   const comment = await db
     .model('Comment')
     .create({ postId: post._id, authorId: id(), body: 'rude words' });

@@ -39,7 +39,7 @@ class TestAuthGuard {
         id,
         email: 'e2e@youssef-test.example',
         name: 'E2E',
-        role: 'user',
+        role: req.headers['x-test-role'] ?? 'user',
         sessionId: 's',
         mustChangePassword: false,
       };
@@ -95,46 +95,38 @@ after(async () => {
 
 let seq = 0;
 async function user(name, status = 'active') {
-  const u = await db
-    .model('User')
-    .create({
-      name,
-      email: `rv${++seq}-${Date.now()}@youssef-test.example`,
-      passwordHash: 'x',
-      status,
-    });
+  const u = await db.model('User').create({
+    name,
+    email: `rv${++seq}-${Date.now()}@youssef-test.example`,
+    passwordHash: 'x',
+    status,
+  });
   return String(u._id);
 }
 
 async function hotelWithRoom() {
-  const hotel = await db
-    .model('Hotel')
-    .create({
-      name: `H${Math.random()}`,
-      address: 'Nile St',
-      cityId: 'cairo',
-      countryCode: 'EG',
-      starClass: 4,
-      currency: 'EGP',
-    });
-  const room = await db
-    .model('Room')
-    .create({
-      hotelId: hotel._id,
-      roomNumber: '101',
-      type: 'Double',
-      beds: 1,
-      maxOccupancy: 2,
-      pricePerNight: 1000,
-    });
-  await db
-    .model('RoomAvailability')
-    .create({
-      roomId: room._id,
-      startDate: day(0),
-      endDate: day(300),
-      kind: 'Available',
-    });
+  const hotel = await db.model('Hotel').create({
+    name: `H${Math.random()}`,
+    address: 'Nile St',
+    cityId: 'cairo',
+    countryCode: 'EG',
+    starClass: 4,
+    currency: 'EGP',
+  });
+  const room = await db.model('Room').create({
+    hotelId: hotel._id,
+    roomNumber: '101',
+    type: 'Double',
+    beds: 1,
+    maxOccupancy: 2,
+    pricePerNight: 1000,
+  });
+  await db.model('RoomAvailability').create({
+    roomId: room._id,
+    startDate: day(0),
+    endDate: day(300),
+    kind: 'Available',
+  });
   return { hotel, room };
 }
 
@@ -287,5 +279,77 @@ test('average rating recalculated on create, edit and delete; public list newest
     (await request(http).get(`/api/hotels/${new Types.ObjectId()}/reviews`))
       .status,
     404,
+  );
+});
+
+test('the hotel moderator replies to a review (HTL-26)', async () => {
+  const sara = await user('Sara');
+  const h = await hotelWithRoom();
+  const other = await hotelWithRoom();
+  const r = (
+    await review(await stay(sara, h, 'completed'), sara, {
+      rating: 4,
+      comment: 'Nice',
+    })
+  ).body;
+  const mod = await user('Hotel Mod');
+  const otherMod = await user('Other Mod');
+  await db
+    .model('User')
+    .updateMany({ _id: { $in: [mod, otherMod] } }, { role: 'hotel_moderator' });
+  await db.model('ModeratorAssignment').create([
+    { moderatorId: mod, providerType: 'hotel', providerId: h.hotel._id },
+    {
+      moderatorId: otherMod,
+      providerType: 'hotel',
+      providerId: other.hotel._id,
+    },
+  ]);
+  const asMod = (u) => ({ 'x-test-user': u, 'x-test-role': 'hotel_moderator' });
+
+  const ok = await request(http)
+    .post(`/api/reviews/${r.id}/reply`)
+    .set(asMod(mod))
+    .send({ body: 'Thank you!' });
+  assert.equal(ok.status, 201, JSON.stringify(ok.body));
+  assert.equal(ok.body.reply.body, 'Thank you!');
+  assert.equal(
+    (
+      await request(http)
+        .post(`/api/reviews/${r.id}/reply`)
+        .set(asMod(otherMod))
+        .send({ body: 'x' })
+    ).body.code,
+    'NOT_ASSIGNED_PROVIDER',
+  );
+  assert.equal(
+    (
+      await request(http)
+        .post(`/api/reviews/${r.id}/reply`)
+        .set(as(sara))
+        .send({ body: 'x' })
+    ).body.code,
+    'INSUFFICIENT_ROLE',
+  );
+  assert.equal(
+    (
+      await request(http)
+        .post(`/api/reviews/${r.id}/reply`)
+        .set(asMod(mod))
+        .send({ body: '  ' })
+    ).body.code,
+    'VALIDATION_FAILED',
+  );
+
+  await request(http)
+    .post(`/api/reviews/${r.id}/reply`)
+    .set(asMod(mod))
+    .send({ body: 'Hope to see you again' });
+  const listed = (await request(http).get(`/api/hotels/${h.hotel._id}/reviews`))
+    .body.items[0];
+  assert.equal(
+    listed.reply.body,
+    'Hope to see you again',
+    'replying again replaces it',
   );
 });

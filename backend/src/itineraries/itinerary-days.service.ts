@@ -10,6 +10,7 @@ import { Activity } from './schemas/activity.schema.js';
 import { BudgetEntry } from './schemas/budget-entry.schema.js';
 import { ItineraryDay } from './schemas/itinerary-day.schema.js';
 import { Itinerary } from './schemas/itinerary.schema.js';
+import { ItineraryBooking } from './schemas/itinerary-booking.schema.js';
 import { TransportCost } from './schemas/transport-cost.schema.js';
 
 /** ITN-05: an itinerary has at most 60 days. */
@@ -33,6 +34,8 @@ export class ItineraryDaysService {
     @InjectModel(BudgetEntry.name) private readonly budgets: Model<BudgetEntry>,
     @InjectModel(TransportCost.name)
     private readonly transport: Model<TransportCost>,
+    @InjectModel(ItineraryBooking.name)
+    private readonly links: Model<ItineraryBooking>,
     @InjectModel(City.name) private readonly cities: Model<City>,
     @InjectConnection() private readonly connection: Connection,
     private readonly uploads: UploadsService,
@@ -113,6 +116,7 @@ export class ItineraryDaysService {
       await this.activities.deleteMany({ dayId: day._id }, { session }).exec();
       await this.budgets.deleteMany({ dayId: day._id }, { session }).exec();
       await this.transport.deleteMany({ dayId: day._id }, { session }).exec();
+      await this.links.deleteMany({ dayId: day._id }, { session }).exec();
       await this.days
         .updateMany(
           { itineraryId: day.itineraryId, dayNumber: { $gt: day.dayNumber } },
