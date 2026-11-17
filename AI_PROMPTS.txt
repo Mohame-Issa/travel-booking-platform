@@ -1081,3 +1081,24 @@ JavaScript and escape every value; a used or expired link shows an error page;
 real inboxes are reached by putting a Gmail App Password in our own .env only
 (names in .env.example), never in the code.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: GEN-01-B
+
+Prompt:
+Build the optional bonus GEN-01-B: also send the GEN-01 notifications (plus
+moderator invitations) by email via SMTP, using a test inbox in development.
+
+How the output was used:
+Reviewed and committed a NotificationEmailsService next to Mohamed Hashad's
+notifications, with unit and end-to-end tests: every notify()/notifyMany()
+still saves the in-app notification first and then emails a copy in the
+background, using the same mail service as ACC-02/ACC-07 (SMTP from .env,
+otherwise the Ethereal test inbox). Decisions: a mail failure is only logged
+and never breaks a booking, cancellation or refund; deactivated accounts get
+no emails (ACC-12); creating a moderator (ACC-13) sends an invitation email
+that names the hotel or airline but never contains the temporary password.
+================================================

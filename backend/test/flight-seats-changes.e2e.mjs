@@ -28,6 +28,8 @@ import { createValidationPipe } from '../dist/common/pipes/validation.pipe.js';
 import { FlightBookingsModule } from '../dist/flight-bookings/flight-bookings.module.js';
 import { FlightBookingsService } from '../dist/flight-bookings/flight-bookings.service.js';
 import { FlightChangesService } from '../dist/flight-bookings/flight-changes.service.js';
+import { MailModule } from '../dist/mail/mail.module.js';
+import { MailService } from '../dist/mail/mail.service.js';
 import { NotificationsModule } from '../dist/notifications/notifications.module.js';
 import { STRIPE_CLIENT } from '../dist/payments/payments.constants.js';
 import { PaymentsModule } from '../dist/payments/payments.module.js';
@@ -36,6 +38,7 @@ import { UploadsModule } from '../dist/uploads/uploads.module.js';
 import { UsersModule } from '../dist/users/users.module.js';
 
 const WEBHOOK_SECRET = 'whsec_e2e_test_only';
+const inbox = []; // GEN-01-B: emails go here instead of SMTP
 const DAY = 86_400_000;
 const newUser = () => String(new Types.ObjectId());
 
@@ -138,6 +141,7 @@ before(async () => {
       }),
       MongooseModule.forRoot(mongo.getUri('youssef_flight_changes_tests')),
       UsersModule,
+      MailModule,
       NotificationsModule,
       UploadsModule,
       HotelStubs,
@@ -152,6 +156,8 @@ before(async () => {
   })
     .overrideProvider(STRIPE_CLIENT)
     .useValue(fakeStripe)
+    .overrideProvider(MailService)
+    .useValue({ send: async (m) => void inbox.push(m) })
     .compile();
   app = moduleRef.createNestApplication({ rawBody: true, logger: false });
   app.setGlobalPrefix('api');
@@ -691,16 +697,14 @@ test('FLT-27: 5 parallel change requests on one booking -> exactly one change, s
 test('ACC-02: an account whose email is not verified cannot hold seats', async () => {
   const f = await flight(await airline());
   const _id = new Types.ObjectId();
-  await db
-    .collection('users')
-    .insertOne({
-      _id,
-      name: 'Unverified',
-      email: `u${_id}@youssef-test.example`,
-      role: 'user',
-      status: 'active',
-      emailVerified: false,
-    });
+  await db.collection('users').insertOne({
+    _id,
+    name: 'Unverified',
+    email: `u${_id}@youssef-test.example`,
+    role: 'user',
+    status: 'active',
+    emailVerified: false,
+  });
   const blocked = await hold(String(_id), f, [passenger(99)]);
   assert.equal(blocked.status, 403);
   assert.equal(blocked.body.code, 'EMAIL_NOT_VERIFIED');
@@ -709,4 +713,35 @@ test('ACC-02: an account whose email is not verified cannot hold seats', async (
     .collection('users')
     .updateOne({ _id }, { $set: { emailVerified: true } });
   assert.equal((await hold(String(_id), f, [passenger(99)])).status, 201);
+});
+
+test('GEN-01-B: a booking confirmation and a cancellation are also emailed to the user', async () => {
+  const f = await flight(await airline());
+  const _id = new Types.ObjectId();
+  const email = `mail${_id}@youssef-test.example`;
+  await db
+    .collection('users')
+    .insertOne({
+      _id,
+      name: 'Mail Test',
+      email,
+      role: 'user',
+      status: 'active',
+    });
+  const user = String(_id);
+  const b = await confirmedBooking(user, f, [passenger(95)]);
+  await request(http)
+    .post(`/api/flight-bookings/${b._id}/cancel`)
+    .set(as(user))
+    .send({ confirm: true });
+  for (let i = 0; i < 50 && inbox.filter((m) => m.to === email).length < 3; i++)
+    await new Promise((r) => setTimeout(r, 20));
+  const subjects = inbox.filter((m) => m.to === email).map((m) => m.subject);
+  assert.ok(subjects.includes('Flight booking confirmed'), subjects.join(', '));
+  assert.ok(subjects.includes('Flight booking cancelled'), subjects.join(', '));
+  assert.ok(subjects.includes('Refund issued'), subjects.join(', '));
+  const inApp = await db
+    .collection('notifications')
+    .countDocuments({ userId: _id });
+  assert.ok(inApp >= 3); // the in-app notifications are still there (GEN-01)
 });
