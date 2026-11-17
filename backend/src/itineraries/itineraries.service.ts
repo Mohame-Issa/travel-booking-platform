@@ -14,6 +14,7 @@ import type {
   UpdateItineraryDto,
 } from './dto/itinerary.dto.js';
 import { toActivityDto } from './activities.service.js';
+import { toEntryDto, toTransportDto } from './budgets.service.js';
 import { buildCityGroups } from './city-groups.js';
 import type { ActivityDto } from './dto/day.dto.js';
 import { dayDate, parseIsoDate, toIsoDate } from './itinerary-dates.js';
@@ -78,13 +79,23 @@ export class ItinerariesService {
   /** GET /api/itineraries/:id (ITN-03): days, their activities and city groups. */
   async getDetail(id: string): Promise<ItineraryDetailDto> {
     const itinerary = await this.findOrFail(id);
-    const [days, activities] = await Promise.all([
+    const [days, activities, entries, trips] = await Promise.all([
       this.days
         .find({ itineraryId: itinerary._id })
         .sort({ dayNumber: 1 })
         .lean()
         .exec(),
       this.activities
+        .find({ itineraryId: itinerary._id })
+        .sort({ createdAt: 1 })
+        .lean()
+        .exec(),
+      this.budgets
+        .find({ itineraryId: itinerary._id })
+        .sort({ createdAt: 1 })
+        .lean()
+        .exec(),
+      this.transport
         .find({ itineraryId: itinerary._id })
         .sort({ createdAt: 1 })
         .lean()
@@ -102,6 +113,12 @@ export class ItinerariesService {
       cityId: d.cityId,
       notes: d.notes,
       activities: (byDay.get(d._id.toString()) ?? []).sort(byTime),
+      budgetEntries: entries
+        .filter((e) => e.dayId.toString() === d._id.toString())
+        .map(toEntryDto),
+      transportCosts: trips
+        .filter((t) => t.dayId.toString() === d._id.toString())
+        .map(toTransportDto),
     }));
     return Object.assign(toSummary(itinerary), {
       days: dayRows,

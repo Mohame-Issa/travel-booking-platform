@@ -6,6 +6,7 @@ import { after, before, test } from 'node:test';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
@@ -16,6 +17,11 @@ import request from 'supertest';
 import { AllExceptionsFilter } from '../dist/common/filters/all-exceptions.filter.js';
 import { RolesGuard } from '../dist/common/guards/roles.guard.js';
 import { createValidationPipe } from '../dist/common/pipes/validation.pipe.js';
+import {
+  FLIGHT_BOOKING_HISTORY_READER,
+  PendingFlightBookingHistoryReader,
+} from '../dist/flights/flight-booking-history.interface.js';
+import { ExchangeRatesService } from '../dist/itineraries/exchange-rates.service.js';
 import { ItinerariesModule } from '../dist/itineraries/itineraries.module.js';
 import { UploadsModule } from '../dist/uploads/uploads.module.js';
 import { UploadsService } from '../dist/uploads/uploads.service.js';
@@ -41,7 +47,21 @@ class TestAuthGuard {
   }
 }
 
-let mongo, app, db, http, uploads;
+// Yassin's FlightsModule needs Omar's booking-history reader; the catalogue's
+// own "pending" stand-in is enough for searching.
+class HistoryReaderStub {}
+Module({
+  providers: [
+    {
+      provide: FLIGHT_BOOKING_HISTORY_READER,
+      useClass: PendingFlightBookingHistoryReader,
+    },
+  ],
+  exports: [FLIGHT_BOOKING_HISTORY_READER],
+})(HistoryReaderStub);
+Global()(HistoryReaderStub);
+
+let mongo, app, db, http, uploads, fx;
 
 before(async () => {
   mongo = await MongoMemoryReplSet.create({
@@ -60,6 +80,7 @@ before(async () => {
       MongooseModule.forRoot(mongo.getUri('itinerary_tests')),
       UsersModule,
       UploadsModule,
+      HistoryReaderStub,
       ItinerariesModule,
     ],
     providers: [
@@ -75,6 +96,7 @@ before(async () => {
   http = app.getHttpServer();
   db = app.get(getConnectionToken());
   uploads = app.get(UploadsService);
+  fx = app.get(ExchangeRatesService);
   for (const m of Object.values(db.models)) await m.init();
   // Reference data the itinerary rules rely on (GEN-12): same ids as Countries.csv / Cities.csv.
   await db.model('Country').create([
@@ -85,6 +107,24 @@ before(async () => {
     { _id: 'cairo', cityId: 'cairo', name: 'Cairo', countryCode: 'EG' },
     { _id: 'dubai', cityId: 'dubai', name: 'Dubai', countryCode: 'AE' },
     { _id: 'luxor', cityId: 'luxor', name: 'Luxor', countryCode: 'EG' },
+  ]);
+  await db.model('Airport').create([
+    {
+      _id: 'CAI',
+      iataCode: 'CAI',
+      name: 'Cairo International Airport',
+      cityId: 'cairo',
+      countryCode: 'EG',
+      timeZone: 'Africa/Cairo',
+    },
+    {
+      _id: 'DXB',
+      iataCode: 'DXB',
+      name: 'Dubai International Airport',
+      cityId: 'dubai',
+      countryCode: 'AE',
+      timeZone: 'Asia/Dubai',
+    },
   ]);
 });
 
@@ -430,16 +470,14 @@ test('delete a day: its activities go, later days renumbered and dates move back
   await api.post(`/itineraries/${detail.id}/days/${luxor}/activities`, owner, {
     name: 'Karnak',
   });
-  await db
-    .model('BudgetEntry')
-    .create({
-      itineraryId: detail.id,
-      dayId: luxor,
-      userId: owner,
-      category: 'food',
-      amount: 10,
-      currency: 'EGP',
-    });
+  await db.model('BudgetEntry').create({
+    itineraryId: detail.id,
+    dayId: luxor,
+    userId: owner,
+    category: 'food',
+    amount: 10,
+    currency: 'EGP',
+  });
 
   const after = await api.del(`/itineraries/${detail.id}/days/${luxor}`, owner);
   assert.equal(after.status, 200);
@@ -631,6 +669,432 @@ test('activity images through the shared upload service, max 5 (ITN-12, GEN-08)'
       await api.post(`/activities/${act.id}/images`, newUser(), {
         imageId: ids[0],
       })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+});
+
+// ------------------------------------------------------------------ step 3
+const RATES = {
+  AED: 3.6,
+  EGP: 50,
+  EUR: 0.9,
+  GBP: 0.75,
+  JPY: 150,
+  SAR: 3.75,
+  USD: 1,
+};
+let fxCalls = 0;
+let fxDown = false;
+function stubFx() {
+  fx.fetchLatest = async () => {
+    fxCalls += 1;
+    if (fxDown) throw new Error('FXRatesAPI down (test)');
+    return { rates: { ...RATES }, rateDate: '2026-11-17' };
+  };
+}
+
+test('budget entries and transport costs: create, validate, edit, delete, owner only (ITN-14, ITN-16)', async () => {
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo', 'luxor');
+  const [d1, d2] = detail.days.map((d) => d.id);
+  const entryUrl = `/itineraries/${detail.id}/days/${d1}/budgets`;
+  const entry = await api.post(entryUrl, owner, {
+    category: 'food',
+    amount: 450,
+    currency: 'egp',
+    note: 'Lunch',
+  });
+  assert.equal(entry.status, 201, JSON.stringify(entry.body));
+  assert.equal(entry.body.currency, 'EGP');
+  assert.equal(
+    (
+      await api.post(entryUrl, owner, {
+        category: 'food',
+        amount: -1,
+        currency: 'EGP',
+      })
+    ).body.code,
+    'VALIDATION_FAILED',
+  );
+  assert.equal(
+    (
+      await api.post(entryUrl, owner, {
+        category: 'souvenirs',
+        amount: 1,
+        currency: 'EGP',
+      })
+    ).body.code,
+    'VALIDATION_FAILED',
+  );
+  assert.equal(
+    (
+      await api.post(entryUrl, owner, {
+        category: 'food',
+        amount: 1,
+        currency: 'XYZ',
+      })
+    ).body.code,
+    'VALIDATION_FAILED',
+  );
+  assert.equal(
+    (
+      await api.post(entryUrl, newUser(), {
+        category: 'food',
+        amount: 1,
+        currency: 'EGP',
+      })
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+
+  assert.equal(
+    (await api.patch(`/budgets/${entry.body.id}`, owner, { amount: 500 })).body
+      .amount,
+    500,
+  );
+  assert.equal(
+    (await api.patch(`/budgets/${entry.body.id}`, newUser(), { amount: 1 }))
+      .body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+
+  const tUrl = `/itineraries/${detail.id}/transport-costs`;
+  const trip = await api.post(tUrl, owner, {
+    dayId: d2,
+    mode: 'train',
+    fromCityId: 'cairo',
+    toCityId: 'luxor',
+    amount: 1200,
+    currency: 'EGP',
+  });
+  assert.equal(trip.status, 201, JSON.stringify(trip.body));
+  assert.equal(
+    (
+      await api.post(tUrl, owner, {
+        dayId: d2,
+        mode: 'train',
+        fromCityId: 'cairo',
+        toCityId: 'atlantis',
+        amount: 1,
+        currency: 'EGP',
+      })
+    ).body.code,
+    'UNKNOWN_CITY',
+  );
+  const otherItinerary = await withDays(owner, 'cairo');
+  assert.equal(
+    (
+      await api.post(tUrl, owner, {
+        dayId: otherItinerary.days[0].id,
+        mode: 'bus',
+        fromCityId: 'cairo',
+        toCityId: 'luxor',
+        amount: 1,
+        currency: 'EGP',
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await api.patch(`/transport-costs/${trip.body.id}`, owner, {
+        dayId: d1,
+        mode: 'bus',
+      })
+    ).body.dayId,
+    d1,
+  );
+  assert.equal(
+    (
+      await api.patch(`/transport-costs/${trip.body.id}`, owner, {
+        dayId: otherItinerary.days[0].id,
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await api.del(`/transport-costs/${trip.body.id}`, newUser())).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+
+  const shown = (await api.get(`/itineraries/${detail.id}`, owner)).body
+    .days[0];
+  assert.equal(shown.budgetEntries[0].amount, 500);
+  assert.equal(shown.transportCosts[0].mode, 'bus');
+  assert.equal((await api.del(`/budgets/${entry.body.id}`, owner)).status, 204);
+  assert.equal(
+    (await api.del(`/transport-costs/${trip.body.id}`, owner)).status,
+    204,
+  );
+});
+
+test('budget summary: categories, days, groups; activity costs count as activities (ITN-14, ITN-09)', async () => {
+  stubFx();
+  const owner = newUser();
+  const detail = await withDays(owner, 'cairo', 'cairo', 'luxor');
+  const [d1, d2, d3] = detail.days.map((d) => d.id);
+  const b = (dayId, category, amount) =>
+    api.post(`/itineraries/${detail.id}/days/${dayId}/budgets`, owner, {
+      category,
+      amount,
+      currency: 'EGP',
+    });
+  await b(d1, 'food', 300);
+  await b(d1, 'accommodation', 2000);
+  await b(d2, 'in_city_transport', 150);
+  await b(d3, 'activities', 100);
+  await api.post(`/itineraries/${detail.id}/days/${d3}/activities`, owner, {
+    name: 'Karnak',
+    cost: 450,
+    currency: 'EGP',
+  });
+  await api.post(`/itineraries/${detail.id}/transport-costs`, owner, {
+    dayId: d3,
+    mode: 'train',
+    fromCityId: 'cairo',
+    toCityId: 'luxor',
+    amount: 1200,
+    currency: 'EGP',
+  });
+
+  const before = fxCalls;
+  const s = (
+    await api.get(
+      `/itineraries/${detail.id}/budget-summary?currency=EGP`,
+      owner,
+    )
+  ).body;
+  assert.equal(
+    fxCalls,
+    before,
+    'no rates needed when everything is already in EGP',
+  );
+  assert.equal(s.currency, 'EGP');
+  assert.equal(s.rateDate, null);
+  assert.deepEqual(s.byCategory, {
+    food: 300,
+    accommodation: 2000,
+    in_city_transport: 150,
+    activities: 550,
+    intercity_transport: 1200,
+  });
+  assert.equal(s.total, 4200);
+  assert.deepEqual(
+    s.byDay.map((d) => [d.dayNumber, d.cityId, d.total]),
+    [
+      [1, 'cairo', 2300],
+      [2, 'cairo', 150],
+      [3, 'luxor', 1750],
+    ],
+  );
+  assert.deepEqual(
+    s.byGroup.map((g) => [g.cityId, g.dayCount, g.subtotal]),
+    [
+      ['cairo', 2, 2450],
+      ['luxor', 1, 1750],
+    ],
+  );
+
+  // ITN-07: deleting a day recalculates the totals
+  await api.del(`/itineraries/${detail.id}/days/${d1}`, owner);
+  const after = (
+    await api.get(
+      `/itineraries/${detail.id}/budget-summary?currency=EGP`,
+      owner,
+    )
+  ).body;
+  assert.equal(after.total, 1900);
+  assert.equal(
+    (await api.get(`/itineraries/${detail.id}/budget-summary`, newUser())).body
+      .code,
+    'NOT_RESOURCE_OWNER',
+  );
+});
+
+test('conversion with daily cached rates, preferred currency, fallback when the API is down (ITN-18)', async () => {
+  stubFx();
+  fxDown = false;
+  await db.model('ExchangeRate').deleteMany({ base: 'USD' }); // only this test's collection on the disposable DB
+  const ownerDoc = await db
+    .model('User')
+    .create({
+      name: 'Fx',
+      email: `fx${Date.now()}@youssef-test.example`,
+      passwordHash: 'x',
+      preferredCurrency: 'USD',
+    });
+  const owner = String(ownerDoc._id);
+  const detail = await withDays(owner, 'cairo');
+  const day = detail.days[0].id;
+  await api.post(`/itineraries/${detail.id}/days/${day}/budgets`, owner, {
+    category: 'food',
+    amount: 500,
+    currency: 'EGP',
+  });
+  await api.post(`/itineraries/${detail.id}/days/${day}/budgets`, owner, {
+    category: 'food',
+    amount: 10,
+    currency: 'USD',
+  });
+
+  // default = the user's preferred currency (USD): 500 EGP = 10 USD, + 10 USD
+  const calls = fxCalls;
+  const usd = (await api.get(`/itineraries/${detail.id}/budget-summary`, owner))
+    .body;
+  assert.equal(usd.currency, 'USD');
+  assert.equal(usd.total, 20);
+  assert.equal(usd.rateDate, '2026-11-17');
+  assert.equal(usd.ratesAreLatest, true);
+  assert.equal(fxCalls, calls + 1);
+
+  // same day again: served from the cache, no second API call ("once per day")
+  const egp = (
+    await api.get(
+      `/itineraries/${detail.id}/budget-summary?currency=EGP`,
+      owner,
+    )
+  ).body;
+  assert.equal(egp.total, 1000);
+  assert.equal(fxCalls, calls + 1);
+
+  // API down and today not cached -> last cached rates, flagged
+  await db
+    .model('ExchangeRate')
+    .updateMany({ base: 'USD' }, { fetchedOn: '2026-01-01' });
+  fxDown = true;
+  const stale = (
+    await api.get(
+      `/itineraries/${detail.id}/budget-summary?currency=EUR`,
+      owner,
+    )
+  ).body;
+  assert.equal(stale.ratesAreLatest, false);
+  assert.equal(stale.total, 18); // 20 USD * 0.9
+
+  // API down and nothing cached -> 503
+  await db.model('ExchangeRate').deleteMany({ base: 'USD' });
+  const none = await api.get(
+    `/itineraries/${detail.id}/budget-summary?currency=EUR`,
+    owner,
+  );
+  assert.equal(none.status, 503);
+  assert.equal(none.body.code, 'EXCHANGE_RATES_UNAVAILABLE');
+  fxDown = false;
+  assert.equal(
+    (
+      await api.get(
+        `/itineraries/${detail.id}/budget-summary?currency=XYZ`,
+        owner,
+      )
+    ).body.code,
+    'VALIDATION_FAILED',
+  );
+});
+
+test('hotels for a city group reuse hotel search with the group dates (ITN-25)', async () => {
+  const owner = newUser();
+  const hotel = await db
+    .model('Hotel')
+    .create({
+      name: 'Nile View',
+      address: 'Corniche',
+      cityId: 'cairo',
+      countryCode: 'EG',
+      starClass: 4,
+      currency: 'EGP',
+    });
+  const room = await db
+    .model('Room')
+    .create({
+      hotelId: hotel._id,
+      roomNumber: '101',
+      type: 'Double',
+      beds: 1,
+      maxOccupancy: 2,
+      pricePerNight: 1000,
+    });
+  await db
+    .model('RoomAvailability')
+    .create({
+      roomId: room._id,
+      startDate: new Date('2026-11-25T00:00:00Z'),
+      endDate: new Date('2026-12-31T00:00:00Z'),
+      kind: 'Available',
+    });
+  const detail = await withDays(owner, 'cairo', 'cairo', 'luxor');
+
+  const res = await api.get(
+    `/itineraries/${detail.id}/hotels?group=1&guests=2`,
+    owner,
+  );
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.body.checkInDate, '2026-12-01');
+  assert.equal(res.body.checkOutDate, '2026-12-03'); // the day after the group's last day
+  assert.ok(
+    res.body.results.items.some(
+      (h) => String(h.hotelId ?? h.id ?? h._id) === String(hotel._id),
+    ),
+    JSON.stringify(res.body.results.items[0]),
+  );
+  assert.equal(
+    (await api.get(`/itineraries/${detail.id}/hotels?group=3&guests=2`, owner))
+      .body.code,
+    'VALIDATION_FAILED',
+  );
+  assert.equal(
+    (
+      await api.get(
+        `/itineraries/${detail.id}/hotels?group=1&guests=2`,
+        newUser(),
+      )
+    ).body.code,
+    'NOT_RESOURCE_OWNER',
+  );
+});
+
+test('flights to the first day city reuse flight search with itinerary dates (ITN-26)', async () => {
+  const owner = newUser();
+  const empty = await createItinerary(owner);
+  assert.equal(
+    (
+      await api.get(
+        `/itineraries/${empty.id}/flights?departureAirport=DXB`,
+        owner,
+      )
+    ).status,
+    409,
+  );
+
+  const detail = await withDays(owner, 'cairo', 'cairo');
+  const oneWay = await api.get(
+    `/itineraries/${detail.id}/flights?departureAirport=dxb`,
+    owner,
+  );
+  assert.equal(oneWay.status, 200, JSON.stringify(oneWay.body));
+  assert.equal(oneWay.body.arrivalAirport, 'CAI');
+  assert.ok(Array.isArray(oneWay.body.results.outbound.items));
+
+  const round = await api.get(
+    `/itineraries/${detail.id}/flights?departureAirport=DXB&tripType=round-trip`,
+    owner,
+  );
+  assert.equal(round.status, 200, JSON.stringify(round.body));
+  assert.equal(
+    (
+      await api.get(
+        `/itineraries/${detail.id}/flights?departureAirport=DXB&arrivalAirport=DXB`,
+        owner,
+      )
+    ).body.code,
+    'VALIDATION_FAILED',
+  );
+  assert.equal(
+    (
+      await api.get(
+        `/itineraries/${detail.id}/flights?departureAirport=DXB`,
+        newUser(),
+      )
     ).body.code,
     'NOT_RESOURCE_OWNER',
   );
