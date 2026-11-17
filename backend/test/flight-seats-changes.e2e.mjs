@@ -27,6 +27,7 @@ import {
 import { createValidationPipe } from '../dist/common/pipes/validation.pipe.js';
 import { FlightBookingsModule } from '../dist/flight-bookings/flight-bookings.module.js';
 import { FlightBookingsService } from '../dist/flight-bookings/flight-bookings.service.js';
+import { FlightChangesService } from '../dist/flight-bookings/flight-changes.service.js';
 import { NotificationsModule } from '../dist/notifications/notifications.module.js';
 import { STRIPE_CLIENT } from '../dist/payments/payments.constants.js';
 import { PaymentsModule } from '../dist/payments/payments.module.js';
@@ -116,7 +117,7 @@ Module({
   exports: [HOTEL_BOOKING_LIFECYCLE, HOTEL_BOOKING_PAYMENT_READER],
 })(HotelStubs);
 
-let mongo, app, db, http, flightBookings;
+let mongo, app, db, http, flightBookings, flightChanges;
 
 before(async () => {
   mongo = await MongoMemoryReplSet.create({
@@ -160,6 +161,7 @@ before(async () => {
   http = app.getHttpServer();
   db = app.get(getConnectionToken());
   flightBookings = app.get(FlightBookingsService);
+  flightChanges = app.get(FlightChangesService);
   for (const m of Object.values(db.models)) await m.init();
   await db.collection('airports').insertMany([
     {
@@ -190,15 +192,13 @@ after(async () => {
 let airlineSeq = 0;
 async function airline() {
   const _id = new Types.ObjectId();
-  await db
-    .collection('airlines')
-    .insertOne({
-      _id,
-      name: `Air ${++airlineSeq}`,
-      code: `Y${airlineSeq}`,
-      currency: 'EGP',
-      status: 'active',
-    });
+  await db.collection('airlines').insertOne({
+    _id,
+    name: `Air ${++airlineSeq}`,
+    code: `Y${airlineSeq}`,
+    currency: 'EGP',
+    status: 'active',
+  });
   await db.collection('airlinepolicies').insertOne({
     airlineId: _id,
     cancellationTiers: [
@@ -468,4 +468,222 @@ test('FLT-28: moving passengers to other seats; e-ticket data shows the seat', a
     .find({ ownerId: new Types.ObjectId(b._id) })
     .toArray();
   assert.deepEqual(csvSeats.map((s) => s.seatNumber).sort(), ['1A', '1B']);
+});
+
+// ============================================================ FLT-27 changes
+
+const changeTo = (user, bookingId, newFlightId, seats) =>
+  request(http)
+    .post(`/api/flight-bookings/${bookingId}/change`)
+    .set(as(user))
+    .send({ newFlightId, ...(seats ? { seats } : {}) });
+const booking = (user, id) =>
+  request(http)
+    .get(`/api/flight-bookings/${id}`)
+    .set(as(user))
+    .then((r) => r.body);
+
+test('FLT-27: cheaper flight -> applied at once, seats move, difference refunded', async () => {
+  const air = await airline();
+  const f1 = await flight(air, { price: 1000 });
+  const f2 = await flight(air, { price: 700, days: 31 });
+  const user = newUser();
+  const b = await confirmedBooking(user, f1, [passenger(40), passenger(41)]);
+  const refundsBefore = stripeCalls.refunds.length;
+
+  const q = await request(http)
+    .get(`/api/flight-bookings/${b._id}/change-quote?newFlightId=${f2}`)
+    .set(as(user));
+  assert.equal(q.status, 200, JSON.stringify(q.body));
+  assert.equal(q.body.action, 'refund');
+  assert.equal(q.body.amount, 600);
+  assert.equal((await cabin(f2)).heldSeats, 0); // a quote reserves nothing
+
+  const c = await changeTo(user, b._id, f2, [
+    { passportNumber: 'P000041', seatNumber: '2A' },
+  ]);
+  assert.equal(c.status, 201, JSON.stringify(c.body));
+  assert.equal(c.body.status, 'Applied');
+  assert.equal(c.body.fareDifference, -600);
+  assert.equal(c.body.refund.amount, 600);
+
+  const after = await booking(user, b._id);
+  assert.equal(after.flightId, f2);
+  assert.equal(after.reference, b.reference); // same booking, same reference
+  assert.equal(after.totalAmount, 1400);
+  assert.deepEqual(
+    after.passengers.map((p) => p.seatNumber),
+    ['1A', '2A'],
+  );
+  assert.equal((await cabin(f1)).bookedSeats, 0);
+  assert.deepEqual(
+    [(await cabin(f2)).bookedSeats, (await cabin(f2)).heldSeats],
+    [2, 0],
+  );
+  assert.equal(
+    await db
+      .collection('seatassignments')
+      .countDocuments({ flightId: new Types.ObjectId(f1) }),
+    0,
+  );
+  assert.deepEqual(
+    stripeCalls.refunds.slice(refundsBefore).map((r) => r.amount),
+    [60000],
+  );
+});
+
+test('FLT-27: dearer flight -> seats held, difference paid via Stripe, then a cancellation refunds both payments', async () => {
+  const air = await airline();
+  const f1 = await flight(air, { price: 1000 });
+  const f3 = await flight(air, { price: 1300, days: 32 });
+  const user = newUser();
+  const b = await confirmedBooking(user, f1, [passenger(50), passenger(51)]);
+
+  const c = await changeTo(user, b._id, f3);
+  assert.equal(c.status, 201, JSON.stringify(c.body));
+  assert.equal(c.body.status, 'Pending Payment');
+  assert.equal(c.body.amountDue, 600);
+  assert.equal((await cabin(f3)).heldSeats, 2);
+  assert.equal((await booking(user, b._id)).flightId, f1); // nothing moves before payment
+
+  const again = await changeTo(user, b._id, f3);
+  assert.equal(again.status, 409);
+  assert.equal(again.body.code, 'CHANGE_ALREADY_PENDING');
+
+  const payment = await pay(user, c.body.changeId); // policies + PaymentIntent + webhook
+  assert.equal(payment.amount, 600);
+
+  const after = await booking(user, b._id);
+  assert.equal(after.flightId, f3);
+  assert.equal(after.totalAmount, 2600);
+  assert.deepEqual(
+    [(await cabin(f3)).bookedSeats, (await cabin(f3)).heldSeats],
+    [2, 0],
+  );
+  assert.equal((await cabin(f1)).bookedSeats, 0);
+
+  // 32 days ahead -> 50% tier of what was paid in total (2000 + 600), split
+  // over the newest payment first (600) and then the original one (700).
+  const refundsBefore = stripeCalls.refunds.length;
+  const cancel = await request(http)
+    .post(`/api/flight-bookings/${b._id}/cancel`)
+    .set(as(user))
+    .send({ confirm: true });
+  assert.equal(cancel.status, 200, JSON.stringify(cancel.body));
+  assert.equal(cancel.body.refund.amount, 1300);
+  assert.deepEqual(
+    stripeCalls.refunds.slice(refundsBefore).map((r) => r.amount),
+    [60000, 70000],
+  );
+  assert.equal((await cabin(f3)).bookedSeats, 0);
+});
+
+test('FLT-27: same route, same airline, other flight, seats available, my booking only', async () => {
+  const air = await airline();
+  const f1 = await flight(air, { price: 1000 });
+  const otherRoute = await flight(air, { from: 'LXR', to: 'CAI' });
+  const otherAirline = await flight(await airline());
+  const full = await flight(air, { seatCount: 1 });
+  await hold(newUser(), full, [passenger(60)]);
+  const user = newUser();
+  const b = await confirmedBooking(user, f1, [passenger(61)]);
+
+  for (const [target, status, code] of [
+    [otherRoute, 400, 'INVALID_FLIGHT_CHANGE'],
+    [otherAirline, 400, 'INVALID_FLIGHT_CHANGE'],
+    [f1, 400, 'INVALID_FLIGHT_CHANGE'],
+    [full, 409, 'SEATS_UNAVAILABLE'],
+  ]) {
+    const r = await changeTo(user, b._id, target);
+    assert.equal(r.status, status, `${target}: ${JSON.stringify(r.body)}`);
+    assert.equal(r.body.code, code);
+  }
+  assert.equal((await changeTo(newUser(), b._id, otherRoute)).status, 404);
+});
+
+test('FLT-27: an unpaid change expires and gives its seats back; the booking is untouched', async () => {
+  const air = await airline();
+  const f1 = await flight(air, { price: 1000 });
+  const f2 = await flight(air, { price: 1500 });
+  const user = newUser();
+  const b = await confirmedBooking(user, f1, [passenger(70)]);
+  const c = await changeTo(user, b._id, f2);
+  await db
+    .collection('flightchanges')
+    .updateOne(
+      { _id: new Types.ObjectId(c.body.changeId) },
+      { $set: { holdExpiresAt: new Date(Date.now() - 1000) } },
+    );
+  assert.equal(await flightChanges.expireOverdue(), 1);
+
+  const list = await request(http)
+    .get(`/api/flight-bookings/${b._id}/changes`)
+    .set(as(user));
+  assert.equal(list.body[0].status, 'Expired');
+  assert.equal((await cabin(f2)).heldSeats, 0);
+  assert.equal(
+    await db
+      .collection('seatassignments')
+      .countDocuments({ flightId: new Types.ObjectId(f2) }),
+    0,
+  );
+  assert.equal((await booking(user, b._id)).flightId, f1);
+});
+
+test('FLT-27: booking cancelled while the difference is being paid -> change dropped, late money refunded in full', async () => {
+  const air = await airline();
+  const f1 = await flight(air, { price: 1000 });
+  const f2 = await flight(air, { price: 1200 });
+  const user = newUser();
+  const b = await confirmedBooking(user, f1, [passenger(80)]);
+  const c = await changeTo(user, b._id, f2);
+  const changeId = c.body.changeId;
+  await request(http)
+    .post(`/api/bookings/flight/${changeId}/accept-policies`)
+    .set(as(user))
+    .send({ accepted: true });
+  const p = await request(http)
+    .post('/api/payments')
+    .set(as(user))
+    .send({ bookingType: 'flight', bookingId: changeId });
+  assert.equal(p.status, 201, JSON.stringify(p.body));
+
+  const cancel = await request(http)
+    .post(`/api/flight-bookings/${b._id}/cancel`)
+    .set(as(user))
+    .send({ confirm: true });
+  assert.equal(cancel.status, 200);
+  assert.equal((await cabin(f2)).heldSeats, 0); // the change was dropped with the booking
+
+  const refundsBefore = stripeCalls.refunds.length;
+  const pi = p.body.stripePaymentIntentId;
+  const w = await webhook('payment_intent.succeeded', {
+    id: pi,
+    object: 'payment_intent',
+    amount_received: intents.get(pi).amount,
+    currency: 'egp',
+    status: 'succeeded',
+  });
+  assert.equal(w.status, 200);
+  assert.deepEqual(
+    stripeCalls.refunds.slice(refundsBefore).map((r) => r.amount),
+    [20000],
+  );
+  assert.equal((await booking(user, b._id)).status, 'Cancelled');
+});
+
+test('FLT-27: 5 parallel change requests on one booking -> exactly one change, seats held once', async () => {
+  const air = await airline();
+  const f1 = await flight(air, { price: 1000 });
+  const f2 = await flight(air, { price: 1100 });
+  const user = newUser();
+  const b = await confirmedBooking(user, f1, [passenger(90)]);
+  const results = await Promise.all(
+    Array.from({ length: 5 }, () => changeTo(user, b._id, f2)),
+  );
+  assert.equal(results.filter((r) => r.status === 201).length, 1);
+  assert.ok(
+    results.filter((r) => r.status !== 201).every((r) => r.status === 409),
+  );
+  assert.equal((await cabin(f2)).heldSeats, 1);
 });
