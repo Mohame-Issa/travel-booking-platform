@@ -17,6 +17,7 @@ import { PlaceholderIntegrationsModule } from './common/placeholders/placeholder
 import { validateEnv } from './config/env.validation.js';
 import { HealthController } from './health/health.controller.js';
 import { PaymentsModule } from './payments/payments.module.js';
+import { ItinerariesModule } from './itineraries/itineraries.module.js';
 import { RefundsModule } from './refunds/refunds.module.js';
 import { AccountsModule } from './users/accounts.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -55,6 +56,7 @@ import { AdminModule } from './admin/admin.module.js';
     // Feature modules are added below this line, one per teammate PR.
     PaymentsModule,
     RefundsModule,
+    ItinerariesModule,
     AirlinesModule,
     AirportsModule,
     FlightsModule,

@@ -767,3 +767,25 @@ showed that @Prop({ type: Types.ObjectId }) becomes Mixed; that also broke
 ACC-15's moderator notification, so I fixed the ModeratorAssignment and
 Session schemas, added a unit test and updated AI_RULES.md section 9.
 ================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-01, ITN-03, ITN-20
+
+Prompt:
+Nada never did her part (itineraries and budgets), so I am taking it over.
+Read the ITN rules from the requirements sheet, reuse what teammates already
+built (country/city lists, upload service), and start with the schemas and
+the itinerary create/list/view/edit/delete endpoints.
+
+How the output was used:
+Reviewed and committed the six itinerary schemas (itinerary, day, activity,
+budget entry, transport cost, exchange rate), the itinerary CRUD endpoints
+with ownership checks, and an end-to-end test on a disposable MongoDB.
+Decisions: day dates are never stored but calculated from the start date and
+the day number, so deleting/reordering days or changing the start date can
+never leave a wrong date; deleting an itinerary removes all its children in
+one transaction; a clonedFrom field is ready for Omar Rashed's cloning.
+================================================
