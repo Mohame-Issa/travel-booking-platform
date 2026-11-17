@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Optional,
   Patch,
   Post,
   Req,
@@ -55,7 +56,9 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly users: UsersService,
     private readonly cookies: AuthCookies,
-    private readonly verification: EmailVerificationService, // ACC-02 (bonus)
+    // ACC-02 (bonus). Always provided by AccountEmailModule in AppModule;
+    // optional only so test setups that load AuthModule alone still start.
+    @Optional() private readonly verification?: EmailVerificationService,
   ) {}
 
   @Public()
@@ -76,7 +79,7 @@ export class AuthController {
   })
   async register(@Body() dto: RegisterDto): Promise<UserResponseDto> {
     const user = await this.auth.register(dto);
-    await this.verification.sendFor(user); // ACC-02 (bonus): verification link
+    await this.verification?.sendFor(user); // ACC-02 (bonus): verification link
     return toPublicUser(user);
   }
 
