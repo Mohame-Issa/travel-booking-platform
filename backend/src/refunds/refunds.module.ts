@@ -1,6 +1,9 @@
 import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { REFUND_SERVICE } from '../common/interfaces/index.js';
+import {
+  FARE_DIFFERENCE_REFUND_SERVICE,
+  REFUND_SERVICE,
+} from '../common/interfaces/index.js';
 import { REFUND_HOOKS } from '../payments/refund-hooks.js';
 import { PaymentsModule } from '../payments/payments.module.js';
 import { REFUND_PREVIEW_SERVICE } from '../common/interfaces/index.js';
@@ -27,7 +30,13 @@ import { Refund, RefundSchema } from './schemas/refund.schema.js';
     { provide: REFUND_SERVICE, useExisting: RefundsService },
     { provide: REFUND_PREVIEW_SERVICE, useExisting: RefundsService },
     { provide: REFUND_HOOKS, useExisting: RefundsService },
+    { provide: FARE_DIFFERENCE_REFUND_SERVICE, useExisting: RefundsService },
   ],
-  exports: [REFUND_SERVICE, REFUND_PREVIEW_SERVICE, REFUND_HOOKS],
+  exports: [
+    REFUND_SERVICE,
+    REFUND_PREVIEW_SERVICE,
+    REFUND_HOOKS,
+    FARE_DIFFERENCE_REFUND_SERVICE,
+  ],
 })
 export class RefundsModule {}

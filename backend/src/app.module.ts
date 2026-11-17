@@ -4,6 +4,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { Connection } from 'mongoose';
 import { AuthModule } from './auth/auth.module.js';
+import { AccountEmailModule } from './auth/account-email.module.js';
+import { MailModule } from './mail/mail.module.js';
 // Mohamed Hashad: shared services (GEN-01/07/08); kept apart from other PRs' import lines
 import { AuditModule } from './audit/audit.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -17,7 +19,11 @@ import { PlaceholderIntegrationsModule } from './common/placeholders/placeholder
 import { validateEnv } from './config/env.validation.js';
 import { HealthController } from './health/health.controller.js';
 import { PaymentsModule } from './payments/payments.module.js';
+import { ItinerariesModule } from './itineraries/itineraries.module.js';
 import { RefundsModule } from './refunds/refunds.module.js';
+import { BlogModule } from './blog/blog.module.js';
+import { ReportsModule } from './reports/reports.module.js';
+import { ReviewsModule } from './reviews/reviews.module.js';
 import { AccountsModule } from './users/accounts.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AirlinesModule } from './airlines/airlines.module.js';
@@ -26,6 +32,8 @@ import { FlightsModule } from './flights/flights.module.js';
 import { FlightBookingsModule } from './flight-bookings/flight-bookings.module.js';
 import { HotelsCatalogueModule } from './hotels/hotels-catalogue.module.js';
 import { AdminModule } from './admin/admin.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
+import { FavouritesModule } from './favourites/favourites.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
@@ -50,11 +58,19 @@ import { AdminModule } from './admin/admin.module.js';
 
     UsersModule,
     AuthModule,
+    MailModule, // ACC-02 / ACC-07 (bonus)
+    AccountEmailModule,
     AccountsModule,
     AdminModule,
+    AnalyticsModule, // BON-01 (bonus)
+    FavouritesModule, // BON-02 (bonus)
     // Feature modules are added below this line, one per teammate PR.
     PaymentsModule,
     RefundsModule,
+    ItinerariesModule,
+    ReviewsModule,
+    ReportsModule,
+    BlogModule,
     AirlinesModule,
     AirportsModule,
     FlightsModule,

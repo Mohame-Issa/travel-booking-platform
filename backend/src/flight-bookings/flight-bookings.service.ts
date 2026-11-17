@@ -9,6 +9,7 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { ModuleRef } from '@nestjs/core';
 import {
   Model,
+  Types,
   type ClientSession,
   type Connection,
   type QueryFilter,
@@ -20,6 +21,7 @@ import {
   Airport,
   ApiException,
   BookingStatus,
+  CabinClass,
   CabinInventory,
   ErrorCode,
   Flight,
@@ -63,6 +65,12 @@ import {
   toCsv,
   type CsvValue,
 } from './flight-bookings.utils.js';
+import type { ChangeSeatsDto } from './dto/seat.dto.js';
+import { SeatsService } from './seats.service.js';
+import {
+  CHANGE_AS_BOOKING_STATUS,
+  FlightChangesService,
+} from './flight-changes.service.js';
 export const HOLD_MINUTES = 10; // FLT-22
 const MAX_ACTIVE_HOLDS_PER_USER = 3; // stops one user from hoarding seats
 
@@ -91,6 +99,8 @@ export class FlightBookingsService
     private readonly notifications: NotificationService,
     private readonly moduleRef: ModuleRef,
     private readonly moderators: ModeratorAssignmentsService,
+    private readonly seats: SeatsService, // FLT-28 (bonus, Youssef Khafagy)
+    private readonly changes: FlightChangesService, // FLT-27 (bonus, Youssef Khafagy)
   ) {}
 
   // Resolved lazily (at call time) to avoid a circular dependency with Youssef's refunds module.
@@ -200,8 +210,16 @@ export class FlightBookingsService
         passportNumber,
         extraBags,
         baggageFee: round2(extraBags * bagPrice),
+        ...(p.seatNumber ? { seatNumber: p.seatNumber } : {}),
       };
     });
+    // FLT-28 (bonus): chosen seats must exist in this cabin and be free.
+    await this.seats.checkChoices(
+      flight._id,
+      dto.cabinClass,
+      cabin.seatCount,
+      dto.passengers,
+    );
     const baggageTotal = round2(
       passengers.reduce((s, p) => s + p.baggageFee, 0),
     );
@@ -302,16 +320,29 @@ export class FlightBookingsService
           'Not enough seats left in this cabin',
         );
 
-      // (3) Pending Payment booking, held for 10 minutes. Price is a snapshot.
+      // (3) FLT-28 (bonus): a seat for every passenger, chosen or first free.
+      const bookingId = new Types.ObjectId();
+      const seatOf = await this.seats.assign(session, {
+        flightId: flight._id,
+        cabinClass: dto.cabinClass,
+        ownerId: bookingId,
+        requests: q.passengers,
+      });
+
+      // (4) Pending Payment booking, held for 10 minutes. Price is a snapshot.
       const [created] = await this.bookings.create(
         [
           {
+            _id: bookingId,
             userId,
             flightId: flight._id,
             airlineId: flight.airlineId,
             cabinClass: dto.cabinClass,
             seatCount: q.seats,
-            passengers: q.passengers,
+            passengers: q.passengers.map((p) => ({
+              ...p,
+              seatNumber: seatOf.get(p.passportNumber),
+            })),
             flightNumber: flight.flightNumber,
             departureAirport: flight.departureAirport,
             arrivalAirport: flight.arrivalAirport,
@@ -346,7 +377,12 @@ export class FlightBookingsService
     paymentId,
   }: ConfirmBookingInput): Promise<void> {
     const existing = await this.bookings.findById(bookingId).lean();
-    if (!existing) throw new NotFoundException('Flight booking not found');
+    if (!existing) {
+      // FLT-27: the payment was for the fare difference of a flight change.
+      if (await this.changes.isChange(bookingId))
+        return this.changes.confirmChange({ bookingId, paymentId });
+      throw new NotFoundException('Flight booking not found');
+    }
     if (
       existing.status === BookingStatus.CONFIRMED &&
       existing.paymentId === paymentId
@@ -410,7 +446,12 @@ export class FlightBookingsService
     reason,
   }: ReleaseInventoryInput): Promise<void> {
     const b = await this.bookings.findById(bookingId).lean();
-    if (!b) throw new NotFoundException('Flight booking not found');
+    if (!b) {
+      // FLT-27: an unpaid flight change gives its held seats back.
+      if (await this.changes.isChange(bookingId))
+        return this.changes.releaseInventory({ bookingId, reason });
+      throw new NotFoundException('Flight booking not found');
+    }
     if (b.status === BookingStatus.PENDING_PAYMENT) {
       await this.inTransaction(async (session) => {
         const expired = await this.bookings.findOneAndUpdate(
@@ -424,6 +465,7 @@ export class FlightBookingsService
           { $inc: { heldSeats: -expired.seatCount } },
           { session },
         );
+        await this.seats.release(session, expired._id); // FLT-28
       });
     } else if (b.status === BookingStatus.CONFIRMED && reason === 'cancelled') {
       await this.cancelConfirmed({ _id: bookingId }, 'system');
@@ -444,13 +486,27 @@ export class FlightBookingsService
     bookingId: string,
   ): Promise<BookingPaymentSnapshot | null> {
     const b = await this.bookings.findById(bookingId).lean();
-    if (!b) return null;
-    const policy = await this.policies
-      .findOne({ airlineId: b.airlineId })
-      .lean();
-    const cabin = await this.cabins
-      .findOne({ flightId: b.flightId, cabinClass: b.cabinClass })
-      .lean();
+    if (!b) {
+      // FLT-27 (bonus): the "booking" paid for is a flight change; the user
+      // pays only the fare difference, under the same airline's policies.
+      const c = await this.changes.findById(bookingId);
+      if (!c) return null;
+      return {
+        bookingId: String(c._id),
+        userId: String(c.userId),
+        status: CHANGE_AS_BOOKING_STATUS[c.status],
+        totalAmount: c.amountDue,
+        currency: c.currency,
+        holdExpiresAt: c.holdExpiresAt,
+        startsAt: c.toDepartureTime,
+        policies: await this.policiesFor(
+          c.airlineId,
+          c.toFlightId,
+          c.cabinClass,
+        ),
+        parentBookingId: String(c.bookingId),
+      };
+    }
     return {
       bookingId: String(b._id),
       userId: String(b.userId),
@@ -459,22 +515,33 @@ export class FlightBookingsService
       currency: b.currency,
       holdExpiresAt: b.holdExpiresAt,
       startsAt: b.departureTime,
-      policies: {
-        cancellationTiers: (policy?.cancellationTiers ?? []).map((t) => ({
-          daysBefore: t.daysBefore,
-          refundPercentage: t.refundPercentage,
-        })),
-        baggagePolicy: cabin
-          ? {
-              freeBags: cabin.freeBaggage,
-              maxWeightKgPerBag: cabin.maxBagWeightKg,
-              extraBagPrice: policy?.extraBagPrice ?? 0,
-              maxExtraBags: policy?.maxExtraBags ?? 0,
-            }
-          : null,
-        checkInTime: null,
-        checkOutTime: null,
-      },
+      policies: await this.policiesFor(b.airlineId, b.flightId, b.cabinClass),
+    };
+  }
+
+  /** PAY-02 policies of an airline for one booked cabin (FLT-04, FLT-08, FLT-09). */
+  private async policiesFor(
+    airlineId: Types.ObjectId,
+    flightId: Types.ObjectId,
+    cabinClass: CabinClass,
+  ) {
+    const policy = await this.policies.findOne({ airlineId }).lean();
+    const cabin = await this.cabins.findOne({ flightId, cabinClass }).lean();
+    return {
+      cancellationTiers: (policy?.cancellationTiers ?? []).map((t) => ({
+        daysBefore: t.daysBefore,
+        refundPercentage: t.refundPercentage,
+      })),
+      baggagePolicy: cabin
+        ? {
+            freeBags: cabin.freeBaggage,
+            maxWeightKgPerBag: cabin.maxBagWeightKg,
+            extraBagPrice: policy?.extraBagPrice ?? 0,
+            maxExtraBags: policy?.maxExtraBags ?? 0,
+          }
+        : null,
+      checkInTime: null,
+      checkOutTime: null,
     };
   }
 
@@ -511,6 +578,68 @@ export class FlightBookingsService
     if (!b || (String(b.userId) !== user.id && user.role !== UserRole.ADMIN))
       throw new NotFoundException('Flight booking not found'); // do not reveal other users' bookings
     return b;
+  }
+
+  // ------------------------------------------- FLT-28 (bonus): change seats
+
+  /**
+   * PATCH /flight-bookings/:id/seats: move passengers of my Pending Payment or
+   * Confirmed booking to other free seats before departure.
+   */
+  async changeSeats(userId: string, id: string, dto: ChangeSeatsDto) {
+    return this.inTransaction(async (session) => {
+      // Touching the booking serializes this with a parallel cancel or change.
+      const b = await this.bookings.findOneAndUpdate(
+        {
+          _id: id,
+          userId,
+          status: {
+            $in: [BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED],
+          },
+          departureTime: { $gt: new Date() },
+        },
+        { $set: { updatedAt: new Date() } },
+        { session, returnDocument: 'after' },
+      );
+      if (!b) {
+        const exists = await this.bookings
+          .exists({ _id: id, userId })
+          .session(session);
+        if (!exists) throw new NotFoundException('Flight booking not found');
+        throw new ApiException(
+          HttpStatus.CONFLICT,
+          ErrorCode.BOOKING_NOT_CANCELLABLE,
+          'Seats can only be changed on a Pending Payment or Confirmed booking before departure',
+        );
+      }
+      const passports = new Set(b.passengers.map((p) => p.passportNumber));
+      for (const s of dto.seats)
+        if (!passports.has(s.passportNumber))
+          throw new ApiException(
+            HttpStatus.BAD_REQUEST,
+            ErrorCode.INVALID_PASSENGERS,
+            `No passenger with passport/ID ${s.passportNumber} on this booking`,
+          );
+      const seatOf = await this.seats.reassign(session, {
+        flightId: b.flightId,
+        cabinClass: b.cabinClass,
+        ownerId: b._id,
+        requests: dto.seats,
+      });
+      b.passengers.forEach((p) => {
+        const seat = seatOf.get(p.passportNumber);
+        if (seat) p.seatNumber = seat;
+      });
+      await b.save({ session });
+      return {
+        bookingId: String(b._id),
+        passengers: b.passengers.map((p) => ({
+          fullName: p.fullName,
+          passportNumber: p.passportNumber,
+          seatNumber: p.seatNumber ?? null,
+        })),
+      };
+    });
   }
 
   // ----------------------------------------------------------- FLT-23: e-ticket
@@ -561,7 +690,7 @@ export class FlightBookingsService
       doc.fontSize(13).text('Passengers').fontSize(12);
       b.passengers.forEach((p, i) =>
         doc.text(
-          `${i + 1}. ${p.fullName}  |  ID/Passport: ${p.passportNumber}  |  Extra bags: ${p.extraBags}`,
+          `${i + 1}. ${p.fullName}  |  ID/Passport: ${p.passportNumber}  |  Seat: ${p.seatNumber ?? '-'}  |  Extra bags: ${p.extraBags}`,
         ),
       );
       doc
@@ -637,7 +766,7 @@ export class FlightBookingsService
     filter: QueryFilter<FlightBooking>,
     by: 'user' | 'provider' | 'system',
   ) {
-    return this.inTransaction(async (session) => {
+    const cancelled = await this.inTransaction(async (session) => {
       const b = await this.bookings.findOneAndUpdate(
         { ...filter, status: BookingStatus.CONFIRMED },
         {
@@ -653,8 +782,12 @@ export class FlightBookingsService
         { $inc: { bookedSeats: -b.seatCount } },
         { session },
       );
+      await this.seats.release(session, b._id); // FLT-28
       return b;
     });
+    // FLT-27: an unpaid change of a cancelled booking is dropped.
+    if (cancelled) await this.changes.discardOpenFor(cancelled._id);
+    return cancelled;
   }
 
   private async issueRefund(
@@ -701,6 +834,8 @@ export class FlightBookingsService
 
   /** FLT-06: confirmed bookings -> Cancelled with 100% refund; holds released. Safe to run twice. */
   async handleFlightCancelled(p: FlightEventPayload): Promise<void> {
+    // FLT-27: unpaid changes TO this flight are dropped (seats released).
+    await this.changes.releaseForFlight(p.flightId);
     const pending = await this.bookings
       .find({ flightId: p.flightId, status: BookingStatus.PENDING_PAYMENT })
       .select('_id')
@@ -863,6 +998,7 @@ export class FlightBookingsService
         'Passport/ID',
         'Date of birth',
         'Cabin',
+        'Seat',
         'Extra bags',
         'Status',
       ],
@@ -875,6 +1011,7 @@ export class FlightBookingsService
           p.passportNumber,
           p.dateOfBirth.toISOString().slice(0, 10),
           b.cabinClass,
+          p.seatNumber ?? '',
           p.extraBags,
           b.status,
         ]);

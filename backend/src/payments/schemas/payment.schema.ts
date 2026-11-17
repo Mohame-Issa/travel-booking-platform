@@ -29,6 +29,14 @@ export class Payment {
   @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
   bookingId: Types.ObjectId;
 
+  /**
+   * FLT-27 (bonus): for the fare-difference payment of a flight change,
+   * bookingId is the change and this is the booking being changed. Refunds of
+   * that booking then use both of its payments. null for normal payments.
+   */
+  @Prop({ type: MongooseSchema.Types.ObjectId, default: null, index: true })
+  parentBookingId: Types.ObjectId | null;
+
   /** Stripe PaymentIntent id ("pi_..."). The webhook finds the payment by it. */
   @Prop({ type: String, required: true, unique: true })
   stripePaymentIntentId: string;

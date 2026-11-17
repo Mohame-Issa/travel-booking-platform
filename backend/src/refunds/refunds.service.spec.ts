@@ -11,6 +11,7 @@ const BOOKING = '64b0000000000000000000aa';
 function payment() {
   return {
     _id: 'pay_1',
+    id: 'pay_1',
     userId: { toString: () => OWNER },
     bookingType: 'flight',
     bookingId: { toString: () => BOOKING },
@@ -24,10 +25,17 @@ function setup(
   opts: { payment?: unknown; existing?: unknown; daysAhead?: number } = {},
 ) {
   const saved: Record<string, unknown>[] = [];
+  // find() serves both "existing cancellation refunds" and "already refunded
+  // on this payment": with `existing` set, createRefund returns early.
+  const found = opts.existing ? [opts.existing] : [];
   const refundModel = {
     findOne: vi
       .fn()
       .mockReturnValue({ exec: () => Promise.resolve(opts.existing ?? null) }),
+    find: vi.fn().mockReturnValue({
+      sort: () => ({ exec: () => Promise.resolve(found) }),
+      exec: () => Promise.resolve(found),
+    }),
     create: vi.fn().mockImplementation((doc: Record<string, unknown>) => {
       const created = {
         ...doc,
@@ -45,6 +53,9 @@ function setup(
   const pay = opts.payment === undefined ? payment() : opts.payment;
   const paymentModel = {
     findOne: vi.fn().mockReturnValue({ exec: () => Promise.resolve(pay) }),
+    find: vi.fn().mockReturnValue({
+      sort: () => ({ exec: () => Promise.resolve(pay ? [pay] : []) }),
+    }),
     findById: vi.fn().mockReturnValue({ exec: () => Promise.resolve(pay) }),
   };
   const stripe = {

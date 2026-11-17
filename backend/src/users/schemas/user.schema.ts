@@ -55,6 +55,14 @@ export class User {
   @Prop({ type: Date, default: null })
   termsAcceptedAt: Date | null;
 
+  /**
+   * ACC-02 (bonus): false until the emailed link is used. Only accounts
+   * registered after ACC-02 have it; older, seeded and admin-created
+   * accounts have no value and count as verified.
+   */
+  @Prop({ type: Boolean })
+  emailVerified?: boolean;
+
   /** ACC-05: consecutive failed logins since the last success or lock. */
   @Prop({ default: 0 })
   failedLoginAttempts: number;

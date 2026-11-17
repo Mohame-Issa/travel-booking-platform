@@ -623,7 +623,8 @@ which payments now enforce. I reviewed the diff before merging.
 ================================================
 
 
-=========================================Date: 2026-11-12
+================================================
+Date: 2026-11-12
 Student: Omar Hisham
 Tool: Claude
 Related Requirement: FLT-19, FLT-21, FLT-22, FLT-23, FLT-25, FLT-26, FLT-29, GEN-11
@@ -670,9 +671,6 @@ the HOTEL_BOOKING_LIFECYCLE and refund tokens) and the hasAnyBooking implementat
 Removed the placeholder provider from flights.module.ts so the real reader is used.
 ================================================
 
-
-
-=======
 ================================================
 Date: 2026-11-12
 Student: Youssef Khafagy
@@ -772,6 +770,384 @@ and merged every PR, with review fixes pushed to each branch. Youssef's test
 showed that @Prop({ type: Types.ObjectId }) becomes Mixed; that also broke
 ACC-15's moderator notification, so I fixed the ModeratorAssignment and
 Session schemas, added a unit test and updated AI_RULES.md section 9.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-01, ITN-03, ITN-20
+
+Prompt:
+Nada never did her part (itineraries and budgets), so I am taking it over.
+Read the ITN rules from the requirements sheet, reuse what teammates already
+built (country/city lists, upload service), and start with the schemas and
+the itinerary create/list/view/edit/delete endpoints.
+
+How the output was used:
+Reviewed and committed the six itinerary schemas (itinerary, day, activity,
+budget entry, transport cost, exchange rate), the itinerary CRUD endpoints
+with ownership checks, and an end-to-end test on a disposable MongoDB.
+Decisions: day dates are never stored but calculated from the start date and
+the day number, so deleting/reordering days or changing the start date can
+never leave a wrong date; deleting an itinerary removes all its children in
+one transaction; a clonedFrom field is ready for Omar Rashed's cloning.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-05, ITN-07, ITN-08, ITN-09, ITN-10, ITN-12
+
+Prompt:
+Continue Nada's itinerary part: add, edit, delete and reorder days (max 60,
+renumbering, dates and city groups recalculated), activities on a day, and
+activity images using Mohamed Hashad's upload service.
+
+How the output was used:
+Reviewed and committed the day and activity services, controllers, DTOs,
+city grouping and end-to-end tests. Decisions: adding a day reserves the next
+number with an atomic counter in a transaction, so parallel requests cannot
+create duplicate numbers or a 61st day; delete and reorder only renumber,
+because dates are calculated; city groups are recomputed on every read;
+images reuse the shared upload service (JPG/PNG, 5 MB, max 5). While writing
+it we found that @CheckOwnership only works on methods, not on the
+controller class, so it is placed on every route and tested with another
+user on every route.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-14, ITN-16, ITN-18, ITN-09, ITN-25, ITN-26
+
+Prompt:
+Finish Nada's itinerary part: budget entries and transport costs, a budget
+summary converted to the user's currency with FXRatesAPI rates fetched once a
+day and cached (falling back to cached rates when the API is down), group
+subtotals, and hotel/flight search from an itinerary reusing Yassin's search.
+
+How the output was used:
+Reviewed and committed the budgets, exchange-rate and itinerary-search
+services, controllers, DTOs and end-to-end tests (FXRatesAPI stubbed in
+tests, and one real call checked by hand). Decisions: totals are computed on
+every read so deleting or moving days always gives correct totals; rates are
+stored against USD so any pair works; FXRatesAPI is only called when a
+conversion is needed, at most once per day; the optional FXRATES_API_KEY
+stays in backend/.env; hotel and flight search reuse Yassin's services
+instead of copying them.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-21, ITN-20, ACC-12, GEN-10
+
+Prompt:
+The TA dropped the blog (BLG-*). Check if anyone worked on it; before that,
+build the missing mandatory parts first, starting with public itinerary
+search, read-only view and cloning (ITN-21), which nobody had built.
+
+How the output was used:
+Reviewed and committed the public itinerary search, view and clone endpoints
+with end-to-end tests. Decisions: only public, not admin-hidden itineraries
+of non-deactivated authors are visible (ITN-20, GEN-10, ACC-12); everything
+else answers 404 so private itineraries are never revealed; the keyword also
+matches country and city names; the clone is a private independent copy in
+one transaction that credits the original author ("Deleted user" if
+deactivated); activity images are not copied because an upload belongs to
+one activity.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: HTL-23, HTL-24, ACC-12
+
+Prompt:
+Build the missing hotel reviews (Omar Rashed's mandatory part): one rating and
+optional review per completed reservation, edit and delete, hotel average
+rating recalculated, and the public list of a hotel's reviews.
+
+How the output was used:
+Reviewed and committed the reviews module and end-to-end tests on real
+reservations. Decisions: a stay counts as completed when its status is
+Completed or its check-out date has passed; one review per reservation is
+enforced by a unique index; the average rating and count are recalculated
+from the visible reviews after every change, so they cannot drift; hidden
+reviews (admin moderation) do not count; deactivated authors show as
+"Deleted user".
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: GEN-09, GEN-10, GEN-07
+
+Prompt:
+Build the missing reports and admin moderation (Omar Rashed's mandatory part):
+users report content with a reason once per item; admins list open reports,
+dismiss them or hide/delete the content, and hide or delete content directly.
+The blog was dropped, so only reviews and itineraries can be reported.
+
+How the output was used:
+Reviewed and committed the reports module and end-to-end tests. Decisions:
+one report per user per item (unique index); users can only report content
+they can see; hiding sets hiddenAt so the content disappears from public
+search and review lists but stays visible to its author; a hidden review no
+longer counts in the hotel rating; deleting reuses the itinerary and review
+delete logic; hiding or deleting resolves every open report on that content;
+every admin action is written to the audit log.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BLG-01, BLG-02, BLG-03, BLG-04, BLG-05, BLG-06, BLG-07, BLG-08, BLG-09, BLG-10, BLG-12, GEN-09, GEN-10
+
+Prompt:
+The TA made the blog optional for our team (counts as a bonus). Nobody had
+built it, so build it: posts with drafts, comments, likes, tags, images,
+keyword search ordered by likes + comments, and author pages, and let posts
+and comments be reported and moderated.
+
+How the output was used:
+Reviewed and committed the blog module, the reports extension and end-to-end
+tests. Decisions: one like per user per post via a unique index (tested with
+parallel clicks); like count, comment count and score are recounted from
+the real documents after every change; only published, not hidden posts of
+non-deactivated authors are public; drafts are read through /posts/mine/:id;
+tags are stored trimmed and lower case; images reuse the shared upload
+service; a hidden comment stops counting in the post's score.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BLG-13
+
+Prompt:
+Add the optional BLG-13: an author can attach an itinerary to a post.
+
+How the output was used:
+Reviewed and committed PATCH /api/posts/:id/itinerary with an end-to-end
+test. Decisions: only the author's own itinerary can be attached; readers
+see it only while it is public and not hidden, so a private itinerary can
+never leak through a post; the author always sees what they attached; null
+detaches it.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: HTL-26, ITN-27, ITN-28
+
+Prompt:
+Add the three optional bonuses in the parts I now own: hotel moderators reply
+to reviews, booked flights and hotels linked to itinerary days feeding the
+budget, and exporting an itinerary as PDF.
+
+How the output was used:
+Reviewed and committed the three features with end-to-end tests. Decisions:
+only the moderator assigned to the review's hotel can reply (shared
+assertCanManage), and replying again replaces the reply; linked bookings are
+read through the same booking-reader contract payments use, only my own
+Confirmed or Completed bookings can be linked, a hotel counts as
+accommodation and a flight as intercity transport, and a booking cancelled
+later stops counting; the PDF reuses pdfkit like Omar Hashem's e-ticket.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: FLT-28
+
+Prompt:
+Build the unbuilt optional bonus FLT-28 (seat selection). The requirement only
+says "allow seat selection", so I chose the layout: a simple seat map from each
+cabin's seat count, rows of 6 seats A-F, one seat per passenger, picked or
+assigned automatically, no extra fee.
+
+How the output was used:
+Reviewed and committed a public seat map (GET /api/flights/:id/seats), an
+optional seatNumber per passenger when holding seats, and PATCH
+/api/flight-bookings/:id/seats to move passengers, with end-to-end tests.
+Decisions: the seat counters (FLT-22) still decide availability, seat
+numbers only decide WHICH seat; the layout is computed from the seat count,
+never stored; a unique index on flight + cabin + seat means two parallel
+bookings can never get the same seat (tested with 6 at once); seats are
+freed in the same transaction as an expired hold or a cancellation; the seat
+appears on the e-ticket and the passenger CSV.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: FLT-27, PAY-01, PAY-03
+
+Prompt:
+Build the unbuilt optional bonus FLT-27: change a Confirmed flight booking's
+date or flight (same route and cabin), paying any fare difference via Stripe
+or receiving a refund of a lower fare, subject to seat availability.
+
+How the output was used:
+Reviewed and committed change-quote, change and change-history endpoints with
+end-to-end tests. Decisions: the new flight must be on the same route, in the
+same cabin and (our assumption) with the same airline, so the accepted
+policies and baggage fees still apply; a cheaper or equal fare is applied at
+once and the difference refunded; a dearer fare holds the new seats for 10
+minutes and the difference is paid through the existing payment flow, using
+the change's id as the booking id, so policies, PaymentIntent and webhook are
+reused unchanged; applying is one transaction (seat counts, seat
+assignments and the booking move together; the booking keeps its id and
+reference); one unpaid change per booking (unique index, tested with 5
+parallel requests); unpaid changes expire, and are dropped if the booking or
+the new flight is cancelled, with any late payment refunded in full.
+Refunds were extended: a booking can now have more than one payment, so a
+cancellation refund is the tier percentage of everything still paid, split
+over the payments newest first; each refund has a unique refundKey so it can
+never be issued twice (this replaced the one-refund-per-booking index).
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-02
+
+Prompt:
+Build the optional bonus ACC-02: send a verification link by email after
+registration and block booking until the email is verified. Use a test inbox
+in development and never put SMTP passwords in the code.
+
+How the output was used:
+Reviewed and committed a mail service (SMTP settings from .env, otherwise a
+free Ethereal test inbox whose emails are logged with a link to read them),
+POST /api/auth/verify-email and /api/auth/resend-verification, and a
+@RequireVerifiedEmail() guard on the flight and hotel booking routes, with
+end-to-end tests. Decisions: only a SHA-256 hash of the link token is stored;
+links work once and a new link cancels the old one; the requirement gives no
+expiry, so we chose 24 hours; accounts created before ACC-02 (seeded, admin
+created) count as verified; a mail failure never undoes the registration.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-07
+
+Prompt:
+Build the optional bonus ACC-07: a user who forgot their password requests a
+reset link by email; the link expires after 30 minutes, is single-use, is
+invalidated by a newer request, and the response does not reveal whether the
+email exists.
+
+How the output was used:
+Reviewed and committed POST /api/auth/forgot-password and
+/api/auth/reset-password with end-to-end tests, reusing the ACC-02 email
+links and Mohamed Amr's password hashing and session revoke. Decisions: the
+same answer is returned immediately for known and unknown emails, and the
+email is sent in the background so the response time gives nothing away;
+links are stored only as hashes and used atomically, so a link cannot be used
+twice; a new request deletes older unused links; the new password follows the
+ACC-01 rules; a reset logs out every session, clears a login lock (ACC-05)
+and marks the email as verified; only active accounts get a link.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-02, ACC-07
+
+Prompt:
+Make the links in the verification and password reset emails work by just
+clicking them, so we can show real emails arriving in our own inboxes.
+
+How the output was used:
+Reviewed and committed two small server-rendered pages with end-to-end tests:
+the verification link verifies and shows a confirmation page, and the reset
+link opens a new-password form that applies the same ACC-01 password rules.
+Decisions: the links point at the API (BACKEND_URL, default
+http://localhost:PORT) because Milestone 1 has no frontend; the pages use no
+JavaScript and escape every value; a used or expired link shows an error page;
+real inboxes are reached by putting a Gmail App Password in our own .env only
+(names in .env.example), never in the code.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: GEN-01-B
+
+Prompt:
+Build the optional bonus GEN-01-B: also send the GEN-01 notifications (plus
+moderator invitations) by email via SMTP, using a test inbox in development.
+
+How the output was used:
+Reviewed and committed a NotificationEmailsService next to Mohamed Hashad's
+notifications, with unit and end-to-end tests: every notify()/notifyMany()
+still saves the in-app notification first and then emails a copy in the
+background, using the same mail service as ACC-02/ACC-07 (SMTP from .env,
+otherwise the Ethereal test inbox). Decisions: a mail failure is only logged
+and never breaks a booking, cancellation or refund; deactivated accounts get
+no emails (ACC-12); creating a moderator (ACC-13) sends an invitation email
+that names the hotel or airline but never contains the temporary password.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BON-01
+
+Prompt:
+Build the optional bonus BON-01: an admin analytics dashboard showing
+bookings and revenue per provider over a selected period.
+
+How the output was used:
+Reviewed and committed GET /api/admin/analytics (admins only) with an
+end-to-end test on hand-made data. Decisions (the requirement defines none):
+a booking counts in the period in which it was confirmed, so pending and
+expired holds never count; gross revenue is the sum of booking totals, refunds
+are the cancellation refunds that did not fail, net = gross - refunds, all in
+EGP; the period is from/to dates in UTC with "to" included, default the last
+30 days; optional filter by airline or hotel; providers are sorted by net
+revenue, 10 per page, with totals for all providers. Read-only aggregations:
+nothing is stored, so the figures are always current.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BON-02
+
+Prompt:
+Build the optional bonus BON-02: a registered user saves hotels and public
+itineraries to a favourites list and views it.
+
+How the output was used:
+Reviewed and committed POST /api/favourites, GET /api/favourites and DELETE
+/api/favourites/:type/:targetId with end-to-end tests. Decisions: only an
+active hotel or an itinerary that is public right now can be saved, using the
+same visibility rule as public itinerary search, so nothing private leaks
+(private ones answer 404); saving twice is harmless (unique index, tested in
+parallel); the list is newest first, 10 per page, filterable by type, with
+current details; an item that later becomes private or deactivated stays in
+the list as unavailable, without its title, until the user removes it.
 ================================================
 
 ================================================

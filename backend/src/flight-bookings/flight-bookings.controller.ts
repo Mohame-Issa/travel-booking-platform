@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Query,
   StreamableFile,
@@ -16,11 +17,13 @@ import {
   UserRole,
   type AuthenticatedUser,
 } from './flight-bookings.imports.js';
+import { RequireVerifiedEmail } from '../auth/guards/email-verified.guard.js';
 import {
   BookingRequestDto,
   CancelBookingDto,
   ListMyBookingsQueryDto,
 } from './dto/flight-booking.dto.js';
+import { ChangeSeatsDto } from './dto/seat.dto.js';
 import { FlightBookingsService } from './flight-bookings.service.js';
 
 @ApiTags('Flight bookings')
@@ -42,6 +45,7 @@ export class FlightBookingsController {
 
   @Post('hold')
   @Roles(UserRole.USER)
+  @RequireVerifiedEmail() // ACC-02 (bonus)
   @ApiOperation({
     summary:
       'FLT-22: atomically hold the seats for 10 minutes (creates a Pending Payment booking)',
@@ -108,5 +112,19 @@ export class FlightBookingsController {
     @Body() _dto: CancelBookingDto,
   ) {
     return this.service.cancel(userId, id);
+  }
+
+  @Patch(':id/seats')
+  @Roles(UserRole.USER)
+  @ApiOperation({
+    summary:
+      'FLT-28 (bonus): move passengers of my Pending Payment or Confirmed booking to other free seats',
+  })
+  changeSeats(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() dto: ChangeSeatsDto,
+  ) {
+    return this.service.changeSeats(userId, id, dto);
   }
 }

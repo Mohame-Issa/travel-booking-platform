@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Optional,
   Patch,
   Post,
   Req,
@@ -39,6 +40,7 @@ import { UsersService } from '../users/users.service.js';
 import { AuthCookies } from './auth-cookies.js';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
+import { EmailVerificationService } from './email-verification.service.js';
 import {
   ChangePasswordDto,
   LoginDto,
@@ -54,6 +56,9 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly users: UsersService,
     private readonly cookies: AuthCookies,
+    // ACC-02 (bonus). Always provided by AccountEmailModule in AppModule;
+    // optional only so test setups that load AuthModule alone still start.
+    @Optional() private readonly verification?: EmailVerificationService,
   ) {}
 
   @Public()
@@ -73,7 +78,9 @@ export class AuthController {
     description: 'EMAIL_ALREADY_REGISTERED',
   })
   async register(@Body() dto: RegisterDto): Promise<UserResponseDto> {
-    return toPublicUser(await this.auth.register(dto));
+    const user = await this.auth.register(dto);
+    await this.verification?.sendFor(user); // ACC-02 (bonus): verification link
+    return toPublicUser(user);
   }
 
   @Public()

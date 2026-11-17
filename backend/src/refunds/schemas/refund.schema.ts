@@ -31,13 +31,30 @@ export class Refund {
   @Prop({ type: String, enum: ['flight', 'hotel'], required: true })
   bookingType: BookingType;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
+  /** The flight booking or hotel reservation (for a late payment of a flight change: the change). */
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true, index: true })
   bookingId: Types.ObjectId;
+
+  /** FLT-27 (bonus): the flight change whose lower fare this refunds. */
+  @Prop({ type: MongooseSchema.Types.ObjectId, default: null, index: true })
+  changeId: Types.ObjectId | null;
+
+  /**
+   * What this refund is for, unique (see the index below):
+   *   cancel:<bookingId>:<paymentId>  cancellation (PAY-03), one per payment
+   *   fare:<changeId>:<paymentId>     lower fare after a flight change (FLT-27)
+   *   late:<paymentId>                payment that arrived after its hold expired
+   * A booking changed to a dearer flight has two payments, so its
+   * cancellation refund may be split over both.
+   */
+  @Prop({ type: String, required: true })
+  refundKey: string;
 
   /**
    * Shared RefundReason values, plus 'late_payment' (ours only): the payment
    * succeeded after the hold expired, so the booking could not be confirmed
-   * (GEN-11) and the money is given back in full.
+   * (GEN-11) and the money is given back in full. 'fare_difference' (FLT-27):
+   * the user changed to a cheaper flight.
    */
   @Prop({
     type: String,
@@ -46,10 +63,11 @@ export class Refund {
       'provider_cancellation',
       'flight_cancelled',
       'late_payment',
+      'fare_difference',
     ],
     required: true,
   })
-  reason: RefundReason | 'late_payment';
+  reason: RefundReason | 'late_payment' | 'fare_difference';
 
   /** User who cancelled; null for system-triggered refunds (FLT-06). */
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', default: null })
@@ -114,11 +132,14 @@ export type RefundDocument = HydratedDocument<Refund>;
 export const RefundSchema = SchemaFactory.createForClass(Refund);
 
 /**
- * One refund per booking: partial cancellation is not supported (HTL-21) and a
- * cancelled booking cannot be cancelled again. A second createRefund() call for
- * the same booking hits this index, so the user cannot be refunded twice.
+ * The database refuses a second refund for the same purpose, so a booking can
+ * never be refunded twice, even by two parallel requests. (This replaced the
+ * older one-refund-per-booking index; RefundsService drops that one on start.)
  */
-RefundSchema.index({ bookingType: 1, bookingId: 1 }, { unique: true });
+RefundSchema.index(
+  { refundKey: 1 },
+  { unique: true, partialFilterExpression: { refundKey: { $type: 'string' } } },
+);
 
 /** Webhook "refund.updated" looks refunds up by Stripe id. */
 RefundSchema.index(

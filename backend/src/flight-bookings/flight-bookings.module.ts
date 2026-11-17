@@ -25,6 +25,18 @@ import {
   FlightBooking,
   FlightBookingSchema,
 } from './schemas/flight-booking.schema.js';
+import {
+  SeatAssignment,
+  SeatAssignmentSchema,
+} from './schemas/seat-assignment.schema.js';
+import { SeatsController } from './seats.controller.js';
+import { FlightChangesController } from './flight-changes.controller.js';
+import { FlightChangesService } from './flight-changes.service.js';
+import {
+  FlightChange,
+  FlightChangeSchema,
+} from './schemas/flight-change.schema.js';
+import { SeatsService } from './seats.service.js';
 
 @Global()
 @Module({
@@ -37,11 +49,20 @@ import {
       { name: AirlinePolicy.name, schema: AirlinePolicySchema },
       { name: Airline.name, schema: AirlineSchema },
       { name: Airport.name, schema: AirportSchema },
+      { name: SeatAssignment.name, schema: SeatAssignmentSchema }, // FLT-28
+      { name: FlightChange.name, schema: FlightChangeSchema }, // FLT-27
     ]),
   ],
-  controllers: [FlightBookingsController, FlightPassengersController],
+  controllers: [
+    FlightBookingsController,
+    FlightPassengersController,
+    SeatsController,
+    FlightChangesController,
+  ],
   providers: [
     FlightBookingsService,
+    SeatsService,
+    FlightChangesService,
     FlightBookingEventsListener,
     { provide: FLIGHT_BOOKING_LIFECYCLE, useExisting: FlightBookingsService },
     {

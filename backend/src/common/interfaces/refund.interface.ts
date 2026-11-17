@@ -68,3 +68,23 @@ export interface RefundPreviewService {
 }
 
 export const REFUND_PREVIEW_SERVICE = 'REFUND_PREVIEW_SERVICE';
+
+/**
+ * FLT-27 (bonus): refund the fare difference when a user changes a Confirmed
+ * flight booking to a cheaper flight. Owner: Youssef Khafagy. Caller: the
+ * flight change service in flight-bookings. Idempotent per change.
+ */
+export interface FareDifferenceRefundInput {
+  bookingType: BookingType;
+  bookingId: string;
+  changeId: string;
+  /** Major units, > 0, in the booking currency. */
+  amount: number;
+  requestedBy?: string;
+}
+
+export interface FareDifferenceRefundService {
+  refundFareDifference(input: FareDifferenceRefundInput): Promise<RefundResult>;
+}
+
+export const FARE_DIFFERENCE_REFUND_SERVICE = 'FARE_DIFFERENCE_REFUND_SERVICE';

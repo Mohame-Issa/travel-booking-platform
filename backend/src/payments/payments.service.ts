@@ -88,6 +88,9 @@ export class PaymentsService {
         userId: new Types.ObjectId(userId),
         bookingType: type,
         bookingId: new Types.ObjectId(bookingId),
+        parentBookingId: booking.parentBookingId
+          ? new Types.ObjectId(booking.parentBookingId)
+          : null,
         stripePaymentIntentId: intent.id,
         amountMinor,
         currency,

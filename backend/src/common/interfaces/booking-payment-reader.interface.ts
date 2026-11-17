@@ -46,6 +46,12 @@ export interface BookingPaymentSnapshot {
   /** Flight departure or hotel check-in (UTC). Used for refund tiers. */
   startsAt: Date;
   policies: BookingPolicies;
+  /**
+   * FLT-27 (bonus): set when this "booking" is the fare-difference payment of
+   * a flight change. It is the id of the booking being changed, so its
+   * refunds can find both payments. Absent for normal bookings.
+   */
+  parentBookingId?: string;
 }
 
 export interface BookingPaymentReader {
