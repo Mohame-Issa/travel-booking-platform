@@ -1,1 +1,1169 @@
 AI Prompt Log
+
+================================================
+Date: 2026-11-13
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: PAY-04, FLT-01, FLT-03, FLT-04, FLT-05, FLT-11,
+FLT-15, FLT-17, HTL-11, HTL-12, GEN-12, GEN-13
+
+Prompt:
+Preserve my uncommitted currency changes and docs; fetch latest develop and
+prepare a separate integration branch/worktree. Include cadd126 and the PAY-04
+correction, preserving teammate payments/refunds/config and every AI_PROMPTS
+entry. Avoid duplicate PLATFORM_CURRENCY, resolve conflicts, run all checks and
+report the review diff. No shared writes, commit, push, PR or branch merge yet.
+
+How the output was used:
+Codex snapshotted both patches, the new document and 18 file hashes, then created
+D:\Projects\travel-booking-platform-integration-pay04 on
+feature/PAY-04-yassin-integration from fetched develop 1a83d7b. Applied cadd126's
+file changes without committing, followed by the preserved currency patch. Both
+applied cleanly. Excluded the shared export already identical upstream. Verified
+one currency definition, untouched teammate/config/package/common files, and all
+16 upstream plus 11 original AI entries retained as 20 unique entries. Added this
+new entry only in the integration tree. Original working files/branch/index stay
+unchanged. No .env or ZIP was copied into the integration tree.
+Installed dependencies from develop's unchanged lockfile with scripts disabled.
+TypeScript no-emit, build and lint passed; all 121 unit tests and 43 isolated
+integration tests passed, with zero failures/skips. Reference check passed without
+connecting. A redundant MongoDB binary download was interrupted and integration
+tests rerun using the existing local test executable, with downloads disabled.
+No shared database or external payment operation ran. Prepared
+docs/yassin-integration-results.md with the exact diff, preservation evidence and
+remaining owner dependencies. Changes are staged for review, with no commit,
+push, PR, branch merge or rebase. No conflicts remain.
+================================================
+
+================================================
+Date: 2026-11-13
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: PAY-04, FLT-01, FLT-03, FLT-04, FLT-08, FLT-11,
+FLT-15, FLT-17, HTL-11, HTL-12, GEN-12
+
+Prompt:
+Focus only on my PAY-04 responsibilities. Fetch develop without merging/rebasing,
+inspect the shared PLATFORM_CURRENCY and official requirement, fix my airline/
+flight currency validation and pricing consistency for EGP, check my hotel schemas/
+search without modifying Hashad's writers, add currency regressions and run checks.
+Identify my pushed work still unmerged, including the TypeScript fix and fixture
+helper, and plan integration while preserving teammates' updates and AI log entries.
+Do not edit Omar's booking code, write shared data, reset/discard, commit, push or merge.
+
+How the output was used:
+Codex fetched develop at 1a83d7b and confirmed PAY-04 requires one platform currency.
+Copied only the exact missing shared EGP constant/comment from develop; that common
+file now matches upstream. Updated Yassin's provider schemas/DTOs, monetary service
+guards, flight details and default flight/hotel searches to enforce EGP. Foreign
+query currencies are rejected and legacy foreign price records are excluded or
+blocked for new price operations without conversion, relabelling or migration.
+Country CSV and itinerary display currencies are preserved. Demo seed definitions
+reuse the constant; no shared seed was run. No booking/management/payment/refund
+module was edited. Updated own Swagger descriptions, tests and documentation.
+Added regressions for all six other supported currencies, valid EGP/omitted filters,
+HTTP/internal validation, legacy search exclusion and price preservation. New test
+fixtures simulate legacy foreign records only through raw writes to disposable
+local test databases. TypeScript no-emit, build and lint passed; 62 unit tests and
+43 isolated integration tests passed. A synchronous-error assertion in a new test
+was corrected before the passing integration rerun. No tests were skipped.
+Verified cadd126 is the only pushed feature commit absent from develop; the original
+1bfea8f implementation is already merged. Prepared docs/yassin-pay04-integration-plan.md
+for a later approved integration worktree/cherry-pick of only remaining work, retaining
+upstream payment/refund/config changes and all authors' AI_PROMPTS entries. No staging,
+branch change, merge, rebase, commit, push, shared DB connection or write occurred.
+================================================
+
+================================================
+Date: 2026-11-12
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-02, FLT-03, FLT-04, FLT-05, GEN-12, GEN-13
+
+Prompt:
+I approve committing and normally pushing my remaining local TypeScript fixes,
+test-flight fixture helper, tests, documentation and relevant AI_PROMPTS entries
+to feature/GEN-12-shared-schemas-seeding in D:\Projects\travel-booking-platform.
+Review every file, exclude credentials/environment/generated/unrelated files,
+confirm the helper requires explicit write authorization, and run TypeScript,
+build, lint and relevant tests. Do not merge, create additional flights, rerun
+shared writes or modify teammates' code. Report the commit, files, tests and status.
+
+How the output was used:
+Codex reviewed the five pending project files, excluded the previous ZIP export,
+and confirmed backend/.env remains ignored and untracked. The helper's CLI defaults
+to read-only, import has no execution side effect, and writes require --apply;
+fixed target/provider/reference checks, unique indexes, a transaction and exact
+existing-fixture checks prevent duplicate creation or overwriting matching data.
+No source behavior or teammate module was changed during publication preparation.
+Executed local TypeScript no-emit, build and lint successfully, followed by all
+55 unit tests and 41 integration tests (including the five fixture safety cases)
+with zero failures/skips. Integration databases were disposable local replica sets
+and did not load .env. UTF-8 content/security and staged scope/whitespace checks
+precede the commit. Only the explicitly reviewed five project files are approved
+for this publication. Remote develop has advanced independently; no merge/rebase
+or direct push to develop/main is authorized or performed. The shared fixture
+helper was not executed against the shared database during this publication.
+================================================
+
+================================================
+Date: 2026-11-12
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-02, FLT-03, FLT-04, FLT-05, GEN-12, GEN-13
+
+Prompt:
+I approve creating the two proposed test flights and their Economy cabin
+inventories in our shared travel-platform MongoDB database for Omar's booking
+tests. Verify the target and ensure the flights do not already exist. Reuse
+Yassin Demo Air and CAI/DXB, use existing validation/flight creation logic,
+create YS9101/YS9102 with one Economy cabin each, 10 seats and fare 1000 EGP,
+valid future airport-local times, and safe reruns. Do not change existing
+providers, airports, accounts or unrelated records. Read back and return actual
+ObjectIds and details. No bookings/payments, credential output, commit or push.
+Report the local TypeScript fix status too.
+
+How the output was used:
+Codex completed a read-only preflight: correct travel-platform database, existing
+active YS airline and CAI/DXB time zones, absent YS9101/YS9102, required existing
+flight/cabin unique indexes and one active assigned airline moderator. Added the
+scoped backend/scripts/omar-booking-fixtures.mjs helper and five isolated local
+safety tests. The helper reuses the shared ValidationPipe, DTOs, FlightsService.create,
+provider-assignment check and existing schemas. One outer transaction includes
+all four inserts via Mongoose transaction async-local storage; no app lifecycle,
+worker, automatic DDL, general seed, login or account change is used.
+TypeScript no-emit, build, lint, 10 affected schema tests and all 5 local fixture
+tests passed. Tests cover preservation, reruns, wrong target, rollback, conflicts
+and concurrent runners. Applied only after these checks and the user's explicit
+shared-write approval. Actual command monitoring recorded four inserts only:
+two flights and two cabins. The rerun reused the same IDs with zero new records
+and zero writes. A separate native-driver read verified both flight/cabin pairs,
+their BSON ObjectId references, correct UTC dates and zero held/booked counters.
+Updated docs/omar-booking-test-data-plan.md with actual IDs, times and verification.
+No secrets were displayed. No bookings/payments were created, no unrelated teammate
+source was changed, and no commit or push occurred. The earlier catalogue-schemas.spec.ts
+type fix remains local.
+================================================
+
+================================================
+Date: 2026-11-12
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-02, FLT-03, FLT-04, FLT-05, GEN-12, GEN-13
+
+Prompt:
+Omar needs actual test flight IDs and airport IDs for his booking system. First
+check the shared MongoDB database read-only for airports, airlines and flights;
+report existing records and IDs. Do not seed or create data. If data is missing,
+prepare a safe setup plan and wait for approval before any shared database write.
+Youssef reported two TypeScript errors in backend/src/flights/catalogue-schemas.spec.ts
+with npx tsc --noEmit. Reproduce and fix both without weakening type safety, then
+verify TypeScript compilation, build and affected tests. Work only in
+D:\Projects\travel-booking-platform. Do not change unrelated teammate code,
+commit, push, merge or write to the shared database without approval.
+
+How the output was used:
+Codex confirmed the feature branch and inspected the existing schemas/configuration.
+A native MongoDB-driver read-only inspector was prepared with bounded list/count/find
+queries and safe catalogue-only projections, without application/model startup or
+automatic index creation. It could not connect: backend/.env is absent and MONGODB_URI
+is not configured in this execution session. No database connection or write occurred;
+shared record counts and IDs remain unknown, not confirmed missing. Requested private
+local configuration without asking for credentials in chat. Prepared the conditional
+approval-gated plan in docs/omar-booking-test-data-plan.md, reusing existing data first.
+Reproduced TS2554 (expected 2 arguments) and TS2339 (instance missing) at line 77.
+The heterogeneous Mongoose model union could not resolve the overloaded schema.path
+getter. Replaced that call with the typed schema.paths map and preserved the ObjectId
+assertion, including failure for an absent path. No casts, suppressions, relaxed
+compiler settings, runtime schema changes or new dependencies were introduced.
+Executed verification: local tsc --noEmit --incremental false --pretty false passed;
+npm run build passed; npm run lint passed; npm test -- src/flights/catalogue-schemas.spec.ts
+passed all 10 affected tests. No shared DB, account, unrelated teammate module or
+Git publication was changed.
+Follow-up: after Yassin privately configured the ignored backend/.env and replied
+ready, read-only direct count/find queries succeeded against travel-platform:
+8 airports, 1 active airline (Yassin Demo Air/YS/EGP), 0 flights and 0 cabins.
+Verified the existing airline ID is BSON ObjectId and airport IDs are IATA strings.
+Metadata listing returned server code 8000; direct collection reads succeeded and
+were complete. No connection string, JWT/seed credential or unrelated personal data
+was displayed. Updated the test-data plan with the observed IDs and an exact
+approval-gated proposal for two future flights and two Economy cabins, reusing the
+existing airline and airports. No seed command, app/model startup, index creation,
+shared-database write, commit, push or merge was performed.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-01, FLT-02, FLT-03, FLT-04, FLT-05, FLT-06,
+FLT-08, FLT-09, FLT-11, FLT-12, FLT-15, FLT-17, FLT-30, HTL-11,
+HTL-12, ACC-18, GEN-02, GEN-03, GEN-04, GEN-05, GEN-06, GEN-08,
+GEN-12, GEN-13
+
+Prompt:
+I approve committing and pushing my completed Software Project I implementation
+in D:\Projects\travel-booking-platform on the existing
+feature/GEN-12-shared-schemas-seeding branch so teammates can begin integration.
+Verify the repository, status, branch and remote; fetch origin/develop without
+merging or rebasing; review all modified/untracked files and exclude secrets,
+environment files, generated files and unrelated teammate changes. Run final
+build, lint, unit and integration tests with isolated databases. Stop on failed
+verification. Stage only approved project files, create a meaningful commit and
+push normally, never force. Create a draft PR into develop if authentication
+permits, documenting requirements, all 14 APIs, tests, seeds, schema contracts,
+pending Hashad/Omar integrations and currency/date interpretation questions.
+Do not merge, push to main/develop, overwrite teammate work or seed the shared DB.
+Report the commit, pushed branch, PR link and actual verification results.
+
+How the output was used:
+Codex verified the expected repository/feature branch and GitHub remote. Fetching
+origin/develop found no commits beyond da7cea2. Reviewed the 54 scoped source,
+test, dependency and documentation files; excluded the previously generated ZIP.
+The environment example contains blank values, and a redacted scan found no real
+credential material; password literals are synthetic validation-only test data.
+No common/, auth/ or users/ source changes were included. Dependency-lock changes
+add csv-parse and the isolated MongoDB test harness without replacing existing
+dependency entries. Final build/lint passed; 55 unit and 36 isolated integration
+tests passed with zero failures/skips; database-free seed:check also passed.
+This entry records the explicit publication authorization and pre-commit checks.
+Publication results are reported separately; no implementation change was made
+as part of publication. No shared database, credential file, merge or rebase was used.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-01, FLT-05, FLT-06, FLT-15, HTL-04, HTL-05,
+HTL-06, HTL-08, HTL-11, HTL-12, HTL-18, HTL-21, GEN-05, GEN-08
+
+Prompt:
+I've had an independent review of my source code against the official Mandatory requirements.
+Please perform a focused follow-up on these findings:
+1. Confirm the airline-logo HTTP 501 integration gap (FLT-01, GEN-08) and document exactly what Mohamed Hashad must provide.
+2. Verify that Omar Hashem can consume flight.updated and flight.cancelled events reliably, including deduplication, refunds, inventory release, and notifications. Do not implement his responsibilities.
+3. Check whether the proposed RoomAvailability schema is compatible with Hashad's expected booking and management operations.
+4. Investigate sorting and filtering prices across multiple provider currencies. Do not invent exchange-rate rules not required by the workbook.
+5. Review the hotel check-in UTC-date versus local-date validation, and determine whether a requirements clarification is necessary.
+6. Check whether legacy flights without bookingCount incorrectly fail valid airport edits.
+7. Assess whether search pagination needs database-level optimization for the expected evaluation dataset.
+Fix independently confirmed bugs within my assigned code, add targeted regression tests, and run the full verification suite.
+Do not modify unrelated teammate modules, use the shared MongoDB database, switch branches, commit, push, or merge.
+Produce a final issue report separating confirmed defects, requirement ambiguities, and teammate dependencies.
+
+How the output was used:
+Codex reviewed the Mandatory workbook, code, rules and shared contracts. Corrected
+EventEmitter once-listener/receiver semantics; added the target airline to the
+logo resolver contract; and corrected legacy bookingCount handling using a
+read-only booking-history adapter contract. Missing legacy history fails explicitly
+with 501; only verified absence permits initialization and the airport edit.
+Omar's booking implementation was not guessed. Added seven isolated integration
+cases covering logo failure atomicity/adapter arguments, legacy all-state history,
+event callbacks and stable-ID replay with a mock dedup receipt, mixed currencies,
+UTC/local date boundaries and sorted late pages on a synthetic dataset. Clarified
+Swagger limitations without inventing FX or changing the hotel today policy.
+Documented exact Hashad/Omar/Youssef integration work, interval writer locking,
+transport reliability limits, required clarification and scale evidence in
+docs/yassin-follow-up-review.md. Actual real refunds, release, notifications and
+production deduplication remain unverified because the owner code is absent.
+Executed full verification: build and lint passed; 55 unit tests and 36 isolated
+database/API tests passed with zero failures; database-free seed:check passed;
+git diff --check passed. Local smoke timings were 179.4ms for 500 flight options
+and 385.6ms for 100 hotels/1000 rooms/1000 ranges, with no SLA inferred.
+No secret file or shared database was opened; no unrelated teammate source was
+changed, and no staging, branch switch, commit, push or merge occurred.
+The prior ZIP export was not regenerated. Yassin must review the changes and
+coordinate the documented owner contracts and requirements decisions.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-05, FLT-06, FLT-11, FLT-12, FLT-15, HTL-11,
+HTL-12, GEN-05, GEN-13
+
+Prompt:
+Check everything is correct with no errors or missing anything in my part.
+
+How the output was used:
+Codex performed an additional code/requirements review and added regressions that
+reproduced four edge cases: valid small fares rounding to zero, a dispatcher
+outage returning an HTTP failure after a committed cancellation, older flights
+without inventoryRevision rejecting schedule edits, and unsafe pagination being
+accepted. The implementation was corrected within Yassin's files. Search services
+also apply shared DTO validation/defaults for internal itinerary callers. Added
+actual AppModule startup and Swagger JSON verification with .env loading disabled
+and an isolated local MongoDB target. Final npm build/lint, 55 unit tests,
+29 database/API tests, seed:check and git diff --check passed. No shared database,
+credential file or teammate-owned implementation was modified. Upload, booking
+consumer and hotel-availability compatibility dependencies remain documented.
+No commit, push, branch switch, PR or merge was performed.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-01, FLT-02, FLT-03, FLT-04, FLT-05, FLT-06, FLT-08,
+FLT-09, FLT-11, FLT-12, FLT-15, FLT-17, FLT-30, HTL-11, HTL-12, ACC-18,
+GEN-02, GEN-03, GEN-04, GEN-05, GEN-06, GEN-08, GEN-12, GEN-13
+
+Prompt:
+Complete Yassin Shawr's entire assigned backend section in the official repository
+D:\Projects\travel-booking-platform. Preserve the current feature branch and all
+uncommitted work. Read the project rules, work split, official description and
+Mandatory workbook, review and repair the existing schemas/seeding, then implement
+the 14 airline, airport, flight/cabin and search APIs with tests and documentation.
+Reuse the shared foundation. Do not duplicate bookings, holds, refunds, hotel
+management, uploads or notifications. Where owner code is absent, define a minimal
+documented integration contract. Do not reveal credentials, write to the shared
+database, change branches, commit, push, create a PR or merge without permission.
+Work autonomously through ordinary implementation and report actual test results.
+
+How the output was used:
+Codex retained the Phase 1 code and added the feature DTOs/controllers/services,
+module wiring, native Intl time-zone conversion, atomic cabin capacity edits,
+flight and hotel search, and durable flight events. The API tests exposed that
+Types.ObjectId decorator declarations produced Mixed schema paths under the
+installed Nest/Mongoose versions; only Yassin-owned schemas were corrected to
+Schema.Types.ObjectId, with regression coverage. Flight status changes and events
+commit together; consumers deduplicate eventId and own booking consequences.
+The existing hotel availability schema was reused. Logo edits explicitly require
+Hashad's resolver rather than fabricating his upload service. Documentation records
+the inventory, event and availability contracts and the missing owner integrations.
+Unit and HTTP/database tests use generated credentials and isolated local databases.
+Build, lint and tests are run and their final results are reported to Yassin.
+Final checks: npm build and lint passed; 53 unit tests and 23 isolated database/API
+tests passed with zero failures; all 14 endpoint Swagger schemas were verified;
+the database-free seed check and git diff --check passed. The first two search
+test failures were fixed by correcting the ObjectId declarations. No team database
+write or Git publication is performed. Yassin must review and
+understand the implementation and coordinate the remaining owner integrations.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Yassin Shawr
+Tool: Codex
+Related Requirement: FLT-01, FLT-02, FLT-03, FLT-04, FLT-05, FLT-08, FLT-09,
+FLT-30, HTL-03, HTL-04, HTL-09, HTL-10, HTL-11, HTL-12, ACC-18, GEN-12, GEN-13
+
+Prompt:
+I am Yassin Shawr, responsible for Flights, Search, and Data Seeding. Inspect
+git status, the latest develop, AGENTS.md, AI_RULES.md, the work split pages
+3-4, the project description, the Mandatory requirements and existing shared
+interfaces. Prioritize Phase 1: shared reference, flight and hotel schemas,
+and safe idempotent seeding. Preserve official IDs and teammates' work;
+reuse User, ModeratorAssignment and shared currency/password rules. Do not
+implement teammates' bookings, holds, refunds or hotel management. Never
+read/reveal credentials, seed the shared database, commit, push or open a PR
+without approval. Present the file plan and coordination needs, implement
+independently safe work, test it and report the diff.
+
+How the output was used:
+Codex inspected develop at da7cea2 and generated the Phase 1 Mongoose schemas,
+reference-data module and validation, seed command, focused unit/database
+tests, environment-variable names and docs/phase-1-yassin.md. A broader initial
+implementation from the first request was removed after the scope was clarified;
+no runtime search/controller code or common/auth/account changes remain.
+The seed defaults to validation without connecting, requires --apply to write,
+uses official IDs and targeted updates, preserves accounts/assignments, and
+rolls back data writes on conflicts. Tests use an isolated local MongoDB replica
+set. Hotel availability shape and flight booking counter semantics remain
+proposals requiring the owning teammates' agreement. No shared database was
+seeded and no GitHub write was performed. Yassin must review and understand
+the generated code before committing or integrating it.
+================================================
+
+================================================
+Date: 2026-11-05
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: ACC-01, ACC-04, ACC-05, ACC-06, ACC-11, ACC-19, GEN-02, GEN-05, GEN-13
+
+Prompt:
+I'm Mohamed Amr, team leader. Read Project_Description.pdf, the Mandatory sheet
+of the requirements Excel and my section of Milestone_1_Work_Split.pdf. Build
+my foundation PR on feature/ACC-01-foundation: NestJS setup with the MongoDB
+Atlas connection (MONGODB_URI) and Swagger UI; shared validation, consistent
+error format and pagination (page size 10); User and Moderator Assignment
+schemas; sessions using httpOnly, Secure, SameSite cookies; role and ownership
+guards and a guard limiting moderators to their assigned provider; register,
+login, logout and GET /api/auth/me; a shared AI rules file and README setup
+section; and common/interfaces with signatures for confirm booking, release
+inventory, create refund, upcoming-Confirmed-booking check, audit and
+notification services, with clearly marked temporary placeholders. Never open
+backend/.env, never wipe shared collections, delete only test data you created.
+
+How the output was used:
+Claude Code generated the NestJS 12 backend skeleton and the common/, auth/
+and users/ modules. Design choices made with it: a 15-minute JWT access token
+plus a rotating refresh token whose hash is stored in a "sessions" collection
+with a 30-minute sliding idle timeout (ACC-06, ACC-19); an atomic failed-login
+counter for the 5-attempt / 15-minute lockout (ACC-05); bcrypt hashing
+(GEN-13). It was tested with real requests against the shared database (test
+accounts were deleted afterwards) and with unit tests for the guards. I
+reviewed the code and wrote AI_RULES.md with it so teammates follow the same
+folders, naming, errors and guard usage.
+================================================
+
+================================================
+Date: 2026-11-05
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: ACC-07a, ACC-08, ACC-09, ACC-10, ACC-11, ACC-12
+
+Prompt:
+Build my remaining endpoints on feature/ACC-07a-account-management:
+POST /api/admin/users/:id/reset-password (ACC-07a), PATCH
+/api/auth/change-password (ACC-08), GET and PATCH /api/users/me (ACC-11,
+ACC-09), DELETE /api/users/me (ACC-12), and cover ACC-10 following the exact
+Excel rules. Use the upcoming-Confirmed-booking checks and the audit service
+through common/interfaces (placeholders until teammates merge).
+
+How the output was used:
+Claude Code generated the AccountsModule (profile, deactivation, admin reset)
+and the change-password endpoint. Decisions taken with it: deactivation is for
+registered users only, needs the password as confirmation and is blocked
+(409) by either the flight or the hotel upcoming-booking check; admin reset
+cannot target admins, clears the lockout, signs the account out everywhere,
+forces a new password and is written to the audit log; changing a password
+signs out all other sessions; preferred currency is limited to the currencies
+in Countries.csv (a unit test keeps them in sync); for ACC-10 the backend
+returns 401 AUTH_REQUIRED and login accepts and echoes a safe relative
+returnTo path. Verified with unit tests and real requests on the shared
+database (test accounts deleted afterwards). I reviewed the code.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Gave Claude the project description, the Milestone 1 work split, the
+requirements Excel and the develop branch (AI_RULES.md, common/interfaces),
+described my payments and refunds part, and asked it to extract the exact
+business rules and list assumptions, open questions and integration risks
+before writing any code.
+
+How the output was used:
+Used the extracted rules (10-minute hold from FLT-22/HTL-18, retry until the
+hold expires, tier selection rule from FLT-09/HTL-10, 100% refunds for
+provider cancellations, single platform currency) to plan my module. Raised
+the gaps with the team: booking read access and refund preview (Omar Hashem,
+Mohamed Hashad), rawBody for webhooks and the platform currency (Mohamed Amr).
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Set up Stripe test mode (variable names only, no keys in code) and create the
+Payment, Refund, PolicyAcceptance and processed-webhook-event schemas
+following AI_RULES.md: no card data, amounts in minor units, and indexes that
+prevent double payments, double refunds and double processing of events.
+
+How the output was used:
+Reviewed and committed the schemas, the Stripe client provider, the env
+validation (only sk_test_ / whsec_ values accepted, empty lines treated as
+not set) and the money helpers. Verified with build, lint and unit tests and
+by starting the app against the shared database.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-02
+
+Prompt:
+Build GET /api/bookings/:type/:id/policies and
+POST /api/bookings/:type/:id/accept-policies: owner only, timestamped
+acceptance with a copy of the policies, Swagger docs and unit tests. The
+booking modules are not merged yet, so code against a proposed booking-reader
+interface with clearly marked placeholders.
+
+How the output was used:
+Reviewed and committed the controller, service, DTOs, error codes and tests.
+Decided to store a snapshot of the accepted policy so later moderator edits
+do not change what the user agreed to. Shared the proposed reader contract
+with Omar Hashem, Mohamed Hashad and Mohamed Amr. Checked the error cases in
+Swagger.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-04
+
+Prompt:
+Implement POST /api/payments and GET /api/payments/:id with Stripe
+PaymentIntents in test mode: amount computed by the server from the booking
+in minor units, policy acceptance required first, owner-only access,
+protection against double payments, client secret returned but not stored.
+
+How the output was used:
+Reviewed and committed the payments service, controller, DTOs and tests.
+Double payments are prevented by returning the existing pending payment, a
+Stripe idempotency key per booking and a unique index. Stripe errors return
+502 and a missing key returns 503. The platform currency check is left as a
+TODO for Mohamed Amr (PAY-04).
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01
+
+Prompt:
+Implement the Stripe webhook POST /api/payments/webhook: verify the signature
+over the raw body, process each event id only once, confirm the booking only
+on payment_intent.succeeded, and handle failed and cancelled payment intents
+as PAY-01 requires. Test with real signed payloads.
+
+How the output was used:
+Reviewed and committed the webhook controller, service and tests. Decided
+that a failed payment does not release inventory, because PAY-01 lets the
+user retry until the hold expires. Enabled rawBody in main.ts pending Mohamed
+Amr's approval. Tested real events locally with the Stripe CLI (stripe listen
+and stripe trigger).
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01
+
+Prompt:
+Implement POST /api/payments/:id/retry (reuse the same PaymentIntent, only
+while the booking is still inside its hold) and a job that cancels the
+PaymentIntent and releases inventory when the 10-minute hold expires,
+without racing the webhook.
+
+How the output was used:
+Reviewed and committed the retry endpoint, the expiry service and tests. No
+retry limit is enforced because PAY-01 does not define one. The expiry job
+never cancels a payment that already succeeded and retries the inventory
+release until it goes through.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-03, PAY-01
+
+Prompt:
+Implement the refund function that Omar Hashem's cancellation endpoints call
+(REFUND_SERVICE.createRefund), a refund preview for the cancel screens, and
+GET /api/refunds/:id. Follow FLT-09/HTL-10 for user cancellations and 100%
+for provider cancellations, use the Stripe Refunds API only for positive
+amounts, notify the user, keep the status in sync from webhooks, and refund
+payments that arrive after the hold expired.
+
+How the output was used:
+Reviewed and committed the refund calculator, refunds service, controller,
+DTO and tests, and removed the REFUND_SERVICE placeholder. Decisions: refunds
+use the tiers the user accepted before paying; days remaining are whole days
+rounded down; amounts are rounded down so we never over-refund; a 0% refund
+is recorded without calling Stripe; a Stripe refusal is recorded as Failed
+instead of undoing the cancellation; only one refund per booking. Verified
+with unit tests and a dependency-injection check of the two modules.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Polish the Swagger documentation of all my endpoints (a correct error example
+for every error code instead of the shared 400 example), write a test
+checklist for Swagger and the Stripe CLI, and prepare the pull request into
+develop.
+
+How the output was used:
+Reviewed and committed the ApiErrors decorator, the updated controllers and
+docs/api/payments-testing.md. Checked the generated OpenAPI document lists
+all 7 endpoints with their requirement IDs and error codes. Opened the PR
+into develop listing PAY-01 to PAY-04 and the open items for teammates.
+================================================
+
+================================================
+Date: 2026-11-11
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04, GEN-12, FLT-01..FLT-30, HTL-11, HTL-12
+
+Prompt:
+Review Yassin's (#5) and Youssef's (#4) pull requests, work out the merge
+order and merge them if they are good. Then do what Youssef asked the team
+leader for in #4, fix any issues and merge.
+
+How the output was used:
+Claude Code built, linted and tested each PR alone and combined (unit tests,
+plus Yassin's integration tests on a local in-memory MongoDB, never the shared
+database). #5 was merged first because Hashad and Omar depend on its schemas.
+On #4 it resolved the .env.example/app.module.ts conflicts, approved the
+rawBody change, moved the booking-payment-reader and refund-preview contracts
+into common/interfaces (placeholders moved to common/placeholders, tokens
+added to AI_RULES.md section 8) and added PLATFORM_CURRENCY = 'EGP' (PAY-04),
+which payments now enforce. I reviewed the diff before merging.
+================================================
+
+
+================================================
+Date: 2026-11-12
+Student: Omar Hisham
+Tool: Claude
+Related Requirement: FLT-19, FLT-21, FLT-22, FLT-23, FLT-25, FLT-26, FLT-29, GEN-11
+Prompt:
+I am Omar Hisham. Study the project PDF, the
+Milestone 1 work split and the requirements sheet, and implement my part (flight
+booking and cancellations) following AI_RULES.md. Here are the interfaces in
+common/interfaces and the flight schemas Yassin merged. Give me every file and its
+code step by step.
+How the output was used:
+Used the generated flight-bookings module (schema, DTOs, service, controllers, module)
+as the base. Reviewed the atomic seat hold (one findOneAndUpdate with a capacity
+filter inside a MongoDB transaction), the status transitions (Pending Payment ->
+Confirmed / Expired / Cancelled) and the cancellation flow. Fixed import paths and
+type imports to match our repo.
+================================================
+================================================
+Date: 2026-11-13
+Student: Omar Hisham
+Tool: Claude
+Related Requirement: FLT-22, PAY-01
+Prompt:
+Nest reports a circular dependency inside REFUND_SERVICE when the app starts.
+Also help me test the payment flow with the Stripe CLI and write a race test that
+fires simultaneous holds at one flight.
+How the output was used:
+Resolved the circular dependency by resolving the refund services lazily through
+ModuleRef. Used the Stripe CLI commands to confirm a test payment and the race
+test script (backend/test/race-test.mjs) to check that only one of 20 simultaneous
+holds succeeds.
+================================================
+================================================
+Date: 2026-11-14
+Student: Omar Hisham
+Tool: Claude
+Related Requirement: HTL-21, FLT-05, FLT-06
+Prompt:
+Mohamed Hashad finished hotel booking and Yassin finished his booking-history
+interface. Write the hotel cancellation endpoints (HTL-21) following Hashad's
+instructions, and bind Yassin's FLIGHT_BOOKING_HISTORY_READER in my module.
+How the output was used:
+Used the generated hotel-bookings/cancellation files (refund preview and cancel through
+the HOTEL_BOOKING_LIFECYCLE and refund tokens) and the hasAnyBooking implementation.
+Removed the placeholder provider from flights.module.ts so the real reader is used.
+================================================
+
+================================================
+Date: 2026-11-12
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-03, FLT-09
+
+Prompt:
+Check the requirements sheet for how a 0% refund and "days remaining" must be
+handled, instead of asking the team, and fix my code to match.
+
+How the output was used:
+FLT-09 ("highest threshold not exceeding the days remaining", integer
+thresholds) already matches counting whole days, so no change. PAY-03 creates
+a refund only for a positive amount, so a 0% cancellation no longer creates a
+refund record: createRefund returns refundId null and status 'none'. This
+needed a small change to the shared RefundResult contract. Checked that Omar
+Hashem's unmerged flight-bookings branch still builds and passes its tests
+with the change.
+================================================
+
+================================================
+Date: 2026-11-12
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02
+
+Prompt:
+Check the repo after my PR was merged and review how Omar Hashem's flight
+bookings use my payment contracts. Then fix the Swagger "Duplicate DTO
+BaggagePolicyDto" warning and make the webhook refuse to refund a payment
+whose booking is already Confirmed.
+
+How the output was used:
+Confirmed Omar's reader, confirm/release and refund calls match the shared
+contracts. Renamed my DTO to PolicyBaggageSnapshotDto and added a check in
+the webhook: when confirmBooking answers 409, the booking is read again and
+the late-payment refund only happens if it is not Confirmed. Verified with
+build, lint and unit tests (new test for the guard).
+================================================
+
+================================================
+Date: 2026-11-13
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: GEN-13, ACC-13, PAY-01, PAY-03, PAY-04, GEN-01, GEN-07, GEN-08, HTL-01..HTL-22
+
+Prompt:
+Here are my teammates' WhatsApp messages. Do whatever is required: review and
+merge Rashed's pull request and the other open PRs, and anything else that
+needs to be done.
+
+How the output was used:
+Claude Code built, linted and tested every open PR alone and all together
+(unit tests plus integration tests on local in-memory MongoDB, never the
+shared database). It also started the merged app on a temporary database and
+tested ACC-13 over HTTP (201/400/401/403/404/409, and audit log entry). PRs
+were merged as #6, #7 (AI_PROMPTS conflict: both entries kept), #8, #10, #9.
+On #9 it removed two unused imports and documented the error responses. In my
+own area it fixed the reported startup crash: empty optional lines copied from
+.env.example (PORT=, COOKIE_SAMESITE=) now mean "not set" (GEN-13 config),
+with unit tests and a real app start. I reviewed the diffs before merging.
+================================================
+
+================================================
+Date: 2026-11-16
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-02, PAY-03, PAY-04
+
+Prompt:
+Check the repo after my teammates' merges and do what is left for my part:
+verify their hotel and flight code against my payment contracts and test the
+whole payment flow end to end.
+
+How the output was used:
+Wrote test/payments.e2e.mjs: real hotel booking, notification, payment and
+refund modules on a disposable MongoDB, fake Stripe API calls, real webhook
+signatures. It covers policies, payment, decline, retry, webhook
+confirmation, replay, cancellation and refund, hold expiry, late payment and
+0% refunds. The test found that @Prop({ type: Types.ObjectId }) is stored as
+Mixed (no casting), so I switched my three schemas to
+MongooseSchema.Types.ObjectId and added a unit test for it. All 61
+integration tests and 163 unit tests pass.
+================================================
+Date: 2026-11-16
+Student: Mohamed Amr
+Tool: Claude Code
+Related Requirement: ACC-06, ACC-13, ACC-15, ACC-16, ACC-17, FLT-22, HTL-21, PAY-01..PAY-04
+
+Prompt:
+Review all open pull requests (#12, #13, #15, #16, #17, #18), fix what is
+needed and merge them.
+
+How the output was used:
+Reviewed, tested (unit, integration and a live run on a throwaway database)
+and merged every PR, with review fixes pushed to each branch. Youssef's test
+showed that @Prop({ type: Types.ObjectId }) becomes Mixed; that also broke
+ACC-15's moderator notification, so I fixed the ModeratorAssignment and
+Session schemas, added a unit test and updated AI_RULES.md section 9.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-01, ITN-03, ITN-20
+
+Prompt:
+Nada never did her part (itineraries and budgets), so I am taking it over.
+Read the ITN rules from the requirements sheet, reuse what teammates already
+built (country/city lists, upload service), and start with the schemas and
+the itinerary create/list/view/edit/delete endpoints.
+
+How the output was used:
+Reviewed and committed the six itinerary schemas (itinerary, day, activity,
+budget entry, transport cost, exchange rate), the itinerary CRUD endpoints
+with ownership checks, and an end-to-end test on a disposable MongoDB.
+Decisions: day dates are never stored but calculated from the start date and
+the day number, so deleting/reordering days or changing the start date can
+never leave a wrong date; deleting an itinerary removes all its children in
+one transaction; a clonedFrom field is ready for Omar Rashed's cloning.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-05, ITN-07, ITN-08, ITN-09, ITN-10, ITN-12
+
+Prompt:
+Continue Nada's itinerary part: add, edit, delete and reorder days (max 60,
+renumbering, dates and city groups recalculated), activities on a day, and
+activity images using Mohamed Hashad's upload service.
+
+How the output was used:
+Reviewed and committed the day and activity services, controllers, DTOs,
+city grouping and end-to-end tests. Decisions: adding a day reserves the next
+number with an atomic counter in a transaction, so parallel requests cannot
+create duplicate numbers or a 61st day; delete and reorder only renumber,
+because dates are calculated; city groups are recomputed on every read;
+images reuse the shared upload service (JPG/PNG, 5 MB, max 5). While writing
+it we found that @CheckOwnership only works on methods, not on the
+controller class, so it is placed on every route and tested with another
+user on every route.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-14, ITN-16, ITN-18, ITN-09, ITN-25, ITN-26
+
+Prompt:
+Finish Nada's itinerary part: budget entries and transport costs, a budget
+summary converted to the user's currency with FXRatesAPI rates fetched once a
+day and cached (falling back to cached rates when the API is down), group
+subtotals, and hotel/flight search from an itinerary reusing Yassin's search.
+
+How the output was used:
+Reviewed and committed the budgets, exchange-rate and itinerary-search
+services, controllers, DTOs and end-to-end tests (FXRatesAPI stubbed in
+tests, and one real call checked by hand). Decisions: totals are computed on
+every read so deleting or moving days always gives correct totals; rates are
+stored against USD so any pair works; FXRatesAPI is only called when a
+conversion is needed, at most once per day; the optional FXRATES_API_KEY
+stays in backend/.env; hotel and flight search reuse Yassin's services
+instead of copying them.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ITN-21, ITN-20, ACC-12, GEN-10
+
+Prompt:
+The TA dropped the blog (BLG-*). Check if anyone worked on it; before that,
+build the missing mandatory parts first, starting with public itinerary
+search, read-only view and cloning (ITN-21), which nobody had built.
+
+How the output was used:
+Reviewed and committed the public itinerary search, view and clone endpoints
+with end-to-end tests. Decisions: only public, not admin-hidden itineraries
+of non-deactivated authors are visible (ITN-20, GEN-10, ACC-12); everything
+else answers 404 so private itineraries are never revealed; the keyword also
+matches country and city names; the clone is a private independent copy in
+one transaction that credits the original author ("Deleted user" if
+deactivated); activity images are not copied because an upload belongs to
+one activity.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: HTL-23, HTL-24, ACC-12
+
+Prompt:
+Build the missing hotel reviews (Omar Rashed's mandatory part): one rating and
+optional review per completed reservation, edit and delete, hotel average
+rating recalculated, and the public list of a hotel's reviews.
+
+How the output was used:
+Reviewed and committed the reviews module and end-to-end tests on real
+reservations. Decisions: a stay counts as completed when its status is
+Completed or its check-out date has passed; one review per reservation is
+enforced by a unique index; the average rating and count are recalculated
+from the visible reviews after every change, so they cannot drift; hidden
+reviews (admin moderation) do not count; deactivated authors show as
+"Deleted user".
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: GEN-09, GEN-10, GEN-07
+
+Prompt:
+Build the missing reports and admin moderation (Omar Rashed's mandatory part):
+users report content with a reason once per item; admins list open reports,
+dismiss them or hide/delete the content, and hide or delete content directly.
+The blog was dropped, so only reviews and itineraries can be reported.
+
+How the output was used:
+Reviewed and committed the reports module and end-to-end tests. Decisions:
+one report per user per item (unique index); users can only report content
+they can see; hiding sets hiddenAt so the content disappears from public
+search and review lists but stays visible to its author; a hidden review no
+longer counts in the hotel rating; deleting reuses the itinerary and review
+delete logic; hiding or deleting resolves every open report on that content;
+every admin action is written to the audit log.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BLG-01, BLG-02, BLG-03, BLG-04, BLG-05, BLG-06, BLG-07, BLG-08, BLG-09, BLG-10, BLG-12, GEN-09, GEN-10
+
+Prompt:
+The TA made the blog optional for our team (counts as a bonus). Nobody had
+built it, so build it: posts with drafts, comments, likes, tags, images,
+keyword search ordered by likes + comments, and author pages, and let posts
+and comments be reported and moderated.
+
+How the output was used:
+Reviewed and committed the blog module, the reports extension and end-to-end
+tests. Decisions: one like per user per post via a unique index (tested with
+parallel clicks); like count, comment count and score are recounted from
+the real documents after every change; only published, not hidden posts of
+non-deactivated authors are public; drafts are read through /posts/mine/:id;
+tags are stored trimmed and lower case; images reuse the shared upload
+service; a hidden comment stops counting in the post's score.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BLG-13
+
+Prompt:
+Add the optional BLG-13: an author can attach an itinerary to a post.
+
+How the output was used:
+Reviewed and committed PATCH /api/posts/:id/itinerary with an end-to-end
+test. Decisions: only the author's own itinerary can be attached; readers
+see it only while it is public and not hidden, so a private itinerary can
+never leak through a post; the author always sees what they attached; null
+detaches it.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: HTL-26, ITN-27, ITN-28
+
+Prompt:
+Add the three optional bonuses in the parts I now own: hotel moderators reply
+to reviews, booked flights and hotels linked to itinerary days feeding the
+budget, and exporting an itinerary as PDF.
+
+How the output was used:
+Reviewed and committed the three features with end-to-end tests. Decisions:
+only the moderator assigned to the review's hotel can reply (shared
+assertCanManage), and replying again replaces the reply; linked bookings are
+read through the same booking-reader contract payments use, only my own
+Confirmed or Completed bookings can be linked, a hotel counts as
+accommodation and a flight as intercity transport, and a booking cancelled
+later stops counting; the PDF reuses pdfkit like Omar Hashem's e-ticket.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: FLT-28
+
+Prompt:
+Build the unbuilt optional bonus FLT-28 (seat selection). The requirement only
+says "allow seat selection", so I chose the layout: a simple seat map from each
+cabin's seat count, rows of 6 seats A-F, one seat per passenger, picked or
+assigned automatically, no extra fee.
+
+How the output was used:
+Reviewed and committed a public seat map (GET /api/flights/:id/seats), an
+optional seatNumber per passenger when holding seats, and PATCH
+/api/flight-bookings/:id/seats to move passengers, with end-to-end tests.
+Decisions: the seat counters (FLT-22) still decide availability, seat
+numbers only decide WHICH seat; the layout is computed from the seat count,
+never stored; a unique index on flight + cabin + seat means two parallel
+bookings can never get the same seat (tested with 6 at once); seats are
+freed in the same transaction as an expired hold or a cancellation; the seat
+appears on the e-ticket and the passenger CSV.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: FLT-27, PAY-01, PAY-03
+
+Prompt:
+Build the unbuilt optional bonus FLT-27: change a Confirmed flight booking's
+date or flight (same route and cabin), paying any fare difference via Stripe
+or receiving a refund of a lower fare, subject to seat availability.
+
+How the output was used:
+Reviewed and committed change-quote, change and change-history endpoints with
+end-to-end tests. Decisions: the new flight must be on the same route, in the
+same cabin and (our assumption) with the same airline, so the accepted
+policies and baggage fees still apply; a cheaper or equal fare is applied at
+once and the difference refunded; a dearer fare holds the new seats for 10
+minutes and the difference is paid through the existing payment flow, using
+the change's id as the booking id, so policies, PaymentIntent and webhook are
+reused unchanged; applying is one transaction (seat counts, seat
+assignments and the booking move together; the booking keeps its id and
+reference); one unpaid change per booking (unique index, tested with 5
+parallel requests); unpaid changes expire, and are dropped if the booking or
+the new flight is cancelled, with any late payment refunded in full.
+Refunds were extended: a booking can now have more than one payment, so a
+cancellation refund is the tier percentage of everything still paid, split
+over the payments newest first; each refund has a unique refundKey so it can
+never be issued twice (this replaced the one-refund-per-booking index).
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-02
+
+Prompt:
+Build the optional bonus ACC-02: send a verification link by email after
+registration and block booking until the email is verified. Use a test inbox
+in development and never put SMTP passwords in the code.
+
+How the output was used:
+Reviewed and committed a mail service (SMTP settings from .env, otherwise a
+free Ethereal test inbox whose emails are logged with a link to read them),
+POST /api/auth/verify-email and /api/auth/resend-verification, and a
+@RequireVerifiedEmail() guard on the flight and hotel booking routes, with
+end-to-end tests. Decisions: only a SHA-256 hash of the link token is stored;
+links work once and a new link cancels the old one; the requirement gives no
+expiry, so we chose 24 hours; accounts created before ACC-02 (seeded, admin
+created) count as verified; a mail failure never undoes the registration.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-07
+
+Prompt:
+Build the optional bonus ACC-07: a user who forgot their password requests a
+reset link by email; the link expires after 30 minutes, is single-use, is
+invalidated by a newer request, and the response does not reveal whether the
+email exists.
+
+How the output was used:
+Reviewed and committed POST /api/auth/forgot-password and
+/api/auth/reset-password with end-to-end tests, reusing the ACC-02 email
+links and Mohamed Amr's password hashing and session revoke. Decisions: the
+same answer is returned immediately for known and unknown emails, and the
+email is sent in the background so the response time gives nothing away;
+links are stored only as hashes and used atomically, so a link cannot be used
+twice; a new request deletes older unused links; the new password follows the
+ACC-01 rules; a reset logs out every session, clears a login lock (ACC-05)
+and marks the email as verified; only active accounts get a link.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: ACC-02, ACC-07
+
+Prompt:
+Make the links in the verification and password reset emails work by just
+clicking them, so we can show real emails arriving in our own inboxes.
+
+How the output was used:
+Reviewed and committed two small server-rendered pages with end-to-end tests:
+the verification link verifies and shows a confirmation page, and the reset
+link opens a new-password form that applies the same ACC-01 password rules.
+Decisions: the links point at the API (BACKEND_URL, default
+http://localhost:PORT) because Milestone 1 has no frontend; the pages use no
+JavaScript and escape every value; a used or expired link shows an error page;
+real inboxes are reached by putting a Gmail App Password in our own .env only
+(names in .env.example), never in the code.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: GEN-01-B
+
+Prompt:
+Build the optional bonus GEN-01-B: also send the GEN-01 notifications (plus
+moderator invitations) by email via SMTP, using a test inbox in development.
+
+How the output was used:
+Reviewed and committed a NotificationEmailsService next to Mohamed Hashad's
+notifications, with unit and end-to-end tests: every notify()/notifyMany()
+still saves the in-app notification first and then emails a copy in the
+background, using the same mail service as ACC-02/ACC-07 (SMTP from .env,
+otherwise the Ethereal test inbox). Decisions: a mail failure is only logged
+and never breaks a booking, cancellation or refund; deactivated accounts get
+no emails (ACC-12); creating a moderator (ACC-13) sends an invitation email
+that names the hotel or airline but never contains the temporary password.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BON-01
+
+Prompt:
+Build the optional bonus BON-01: an admin analytics dashboard showing
+bookings and revenue per provider over a selected period.
+
+How the output was used:
+Reviewed and committed GET /api/admin/analytics (admins only) with an
+end-to-end test on hand-made data. Decisions (the requirement defines none):
+a booking counts in the period in which it was confirmed, so pending and
+expired holds never count; gross revenue is the sum of booking totals, refunds
+are the cancellation refunds that did not fail, net = gross - refunds, all in
+EGP; the period is from/to dates in UTC with "to" included, default the last
+30 days; optional filter by airline or hotel; providers are sorted by net
+revenue, 10 per page, with totals for all providers. Read-only aggregations:
+nothing is stored, so the figures are always current.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: BON-02
+
+Prompt:
+Build the optional bonus BON-02: a registered user saves hotels and public
+itineraries to a favourites list and views it.
+
+How the output was used:
+Reviewed and committed POST /api/favourites, GET /api/favourites and DELETE
+/api/favourites/:type/:targetId with end-to-end tests. Decisions: only an
+active hotel or an itinerary that is public right now can be saved, using the
+same visibility rule as public itinerary search, so nothing private leaks
+(private ones answer 404); saving twice is harmless (unique index, tested in
+parallel); the list is newest first, 10 per page, filterable by type, with
+current details; an item that later becomes private or deactivated stays in
+the list as unavailable, without its title, until the user removes it.
+================================================
+
+================================================
+Date: 2026-11-17
+Student: Youssef Khafagy
+Tool: Claude
+Related Requirement: PAY-01, PAY-04
+
+Prompt:
+Add a section to the README explaining how to set up and test payments with
+Stripe test mode, since the milestone requires a README with setup
+instructions.
+
+How the output was used:
+Added "Payments with Stripe test mode" to the README (test key, Stripe CLI,
+stripe listen with --events, webhook secret, what [200]/[400] mean, EGP,
+test cards, link to docs/api/payments-testing.md) and listed
+npm run test:integration in the commands table.
+================================================
