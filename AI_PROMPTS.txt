@@ -1167,3 +1167,161 @@ stripe listen with --events, webhook secret, what [200]/[400] mean, EGP,
 test cards, link to docs/api/payments-testing.md) and listed
 npm run test:integration in the commands table.
 ================================================
+
+================================================
+Date: 2026-11-13
+Student: Mohamed Hashad
+Tool: Claude Code (Claude Opus 5.5)
+Related Requirement: GEN-01, GEN-07, GEN-08, GEN-11, HTL-01..HTL-22, PAY-01,
+PAY-02, PAY-03, ACC-12, FLT-01
+
+Prompt:
+Team integration update for my section: inspect the current branch and
+uncommitted work without switching, resetting or committing. Reuse Yassin's
+Hotel, Room, RoomAvailability and HotelPolicy schemas exactly (no duplicate
+inventory model). Bookings must check the whole stay, reject blocked dates,
+confirmed bookings and unexpired holds, and reserve all rooms or none in a
+MongoDB transaction. Implement the airline-logo resolver on the shared upload
+service (JPG/PNG, 5 MB, one logo per airline, owner check). Integrate with
+Youssef's payments: confirm only after verified payment, idempotent confirm and
+release, compatible with nullable refundId. Make notifications reusable and
+never claim a refund that does not exist. Take GEN-08 limits from the workbook.
+
+How the output was used:
+Used for the integration analysis only. It found the real checkout path, read
+the work split, AI_RULES.md, the shared interfaces, Yassin's docs and Youssef's
+payment callers, and extracted GEN-08 from the workbook (JPG/PNG, 5 MB, 5 per
+post/activity/hotel, 1 logo per airline). It flagged that the logo resolver in
+the code takes 3 arguments (assetId, actorId, airlineId), not 2, and that no
+NotificationType existed for failed payments. I answered its 7 questions
+(3-argument resolver, add 'payment_failed', no refund code of my own, two PRs,
+build on develop, local UPLOAD_DIR storage) before any code was written.
+================================================
+
+================================================
+Date: 2026-11-13
+Student: Mohamed Hashad
+Tool: Claude Code (Claude Opus 5.5); OpenAI Codex as second reviewer
+Related Requirement: GEN-01, GEN-07, GEN-08, FLT-01
+
+Prompt:
+Build the shared services with the PRD loop: in-app notifications bound to
+NOTIFICATION_SERVICE with list and mark-read endpoints, the audit service with
+GET /api/admin/audit-logs, the GEN-08 image-upload service, and the real
+AIRLINE_LOGO_RESOLVER. Use GitNexus for impact checks, generate code maps, and
+run the santa loop (dual review) after implementation. No commit or push
+without my approval. Yassin's two e2e logo assertions may change from 501
+to 404.
+
+How the output was used:
+Implemented backend/src/notifications, audit and uploads as @Global modules
+bound to the shared tokens, removed their placeholders, added the logo resolver
+and docs/CODEMAPS. Tests were written first (vitest), then the code. Three
+reviewers (TypeScript, silent failures, security) found a non-atomic logo swap
+plus smaller issues; I had them fixed (restore the old logo on failure,
+IMAGE_TOO_LARGE code, nosniff/CSP headers, unattached-upload cap) and each fix
+was proven by reverting it and watching its test fail. Santa loop passed in
+round 2 (Claude and Codex). I reviewed the diff before it went into the commit.
+================================================
+
+================================================
+Date: 2026-11-13
+Student: Mohamed Hashad
+Tool: Claude Code (Claude Opus 5.5); OpenAI Codex as second reviewer
+Related Requirement: HTL-01, HTL-02, HTL-03, HTL-04, HTL-05, HTL-06, HTL-08,
+HTL-09, HTL-10, HTL-15, HTL-16, HTL-17, HTL-18, HTL-20, HTL-22, GEN-11, ACC-12
+
+Prompt:
+I want to make all my task in one commit and skip Yassin's mentions, and read
+the open PRs and make sure not to make merge conflicts.
+
+How the output was used:
+Built hotel management (profile/photos, rooms, bookable/blocked ranges,
+calendar, policies, reservations, free rooms) and hotel bookings (POST/GET
+/api/hotel-bookings) on Yassin's RoomAvailability rows, plus the
+HOTEL_BOOKING_LIFECYCLE, HOTEL_BOOKING_PAYMENT_READER and
+HOTEL_UPCOMING_BOOKINGS_CHECKER bindings. Concurrency uses a per-room write
+inside each MongoDB transaction; the integration test fires 8 simultaneous
+requests at the last room and exactly 1 succeeds (8 of 8 succeed when the lock
+is removed). Santa loop needed 3 rounds: fixed late-payment confirmation (2
+minute webhook grace), stale occupancy, null childrenAges and the Completed
+boundary. Each open PR (#6-#9) was test-applied on top to confirm no conflict;
+my app.module.ts imports were moved away from PR #9's lines. Merged as PR #10.
+================================================
+
+================================================
+Date: 2026-11-13
+Student: Mohamed Hashad
+Tool: Claude Code (Claude Opus 5.5)
+Related Requirement: GEN-01, GEN-07, GEN-08, HTL-21, PAY-01, PAY-03, ACC-12
+
+Prompt:
+I want to send my teammates a recap of what is done and what is left to do for
+everyone, based on my work and the task. Do it as a PDF and save it on the
+desktop.
+
+How the output was used:
+Produced a 4-page PDF (HTML printed with Edge) listing my endpoints and rules,
+and for each teammate what they can now use from my work and what is left for
+them (e.g. Omar Hashem's HTL-21 cancel steps, Nada's activity images via
+UploadsService, Youssef's 409/refund contract). I checked it and sent it to the
+team.
+================================================
+
+================================================
+Date: 2026-11-16
+Student: Mohamed Hashad
+Tool: Claude Code (Claude Opus 5.5)
+Related Requirement: GEN-01, GEN-07, GEN-08, HTL-01..HTL-22 (attribution only)
+
+Prompt:
+My commit shows another user's account on GitHub and Claude instead of me, so
+I could lose my marks. Fix the credit without affecting any other code or files,
+because my teammates already built their parts on top of my work.
+
+How the output was used:
+The cause was the email in this PC's global git config. Set the repository's
+git identity to my GitHub account. Opened PR #18: two commits by me that remove
+and re-add exactly my lines; the final code is identical to develop (0 files
+changed), git blame moved exactly my 3731 lines and no teammate line, and all
+open PRs still applied. Merged with a merge commit on 2026-11-16.
+================================================
+
+================================================
+Date: 2026-11-16
+Student: Mohamed Hashad
+Tool: Claude Code (Claude Opus 5.5)
+Related Requirement: HTL-03, HTL-04, HTL-10, HTL-16, HTL-21 (test data)
+
+Prompt:
+Set up backend/.env from .env.example and run the backend locally with Swagger.
+Then Omar Hashem asked for a hotel id, room id, open future dates, the booking
+request body, cancellation tiers and the notifications endpoint so he can test
+his HTL-21 cancel end to end.
+
+How the output was used:
+Created backend/.env locally (git-ignored, never committed) and started the
+server; Swagger listed all my routes. Read the shared database first (only one
+hotel, no rooms, no policy), then created a clearly labelled test fixture
+through my own API as admin: "Hashad Test Hotel (for HTL-21 testing)" with
+rooms T101/T102, bookable dates and tiers 7+ days = 100%, 3+ days = 50%.
+Nothing existing was changed or deleted. I sent Omar the ids, an example
+POST /api/hotel-bookings body and the confirmation flow.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: Mohamed Hashad
+Tool: Claude Code (Claude Opus 5.5)
+Related Requirement: Project description 11.1 (AI prompt log)
+
+Prompt:
+Add my AI prompts to AI_PROMPTS.txt in the same format as the other entries
+(Date, Student, Tool, Related Requirement, Prompt, How the output was used) in
+a PR to develop today.
+
+How the output was used:
+Wrote these entries from the actual session history of my work, appended them
+after the existing entries without changing anyone else's, and opened the PR
+to develop for Mohamed Amr to merge before the 20/11 release.
+================================================
